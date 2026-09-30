@@ -3,7 +3,9 @@
 //!
 //! One thread owns the `HotkeyManager`. It needs Accessibility permission, so
 //! until that is granted the thread keeps retrying and the settings window
-//! shows the shortcut as waiting for permission.
+//! shows the shortcut as waiting for permission. The permission is re-checked
+//! every second: if it is revoked the listener is dropped, and a new one is
+//! created as soon as it is granted again.
 //!
 //! Key-combination shortcuts (⌃⌥Space) are *blocked* from reaching other
 //! apps. Modifier-only shortcuts (hold Right ⌥) are not — blocking a modifier
@@ -139,9 +141,20 @@ impl Worker {
     fn run(mut self, rx: Receiver<Command>) {
         let mut next_attempt = Instant::now();
         loop {
-            if self.manager.is_none() && Instant::now() >= next_attempt {
-                self.ensure_manager();
+            if Instant::now() >= next_attempt {
                 next_attempt = Instant::now() + PERMISSION_RETRY;
+                if self.manager.is_none() {
+                    self.ensure_manager();
+                } else if !echolocal_macos::accessibility_trusted() {
+                    // Permission was turned off: macOS disables the event tap
+                    // and doesn't restore it when permission comes back, so
+                    // drop the listener and build a fresh one once granted.
+                    log::warn!("Accessibility permission was revoked; shortcut paused");
+                    self.manager = None;
+                    self.dictation_id = None;
+                    self.escape_id = None;
+                    self.set_status(HotkeyStatus::NeedsAccessibility);
+                }
             }
             // Deliver hotkey events.
             let mut events = Vec::new();

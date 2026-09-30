@@ -4,9 +4,10 @@
 #   ./scripts/install-mac.sh
 #
 # The app is ad-hoc signed (no Apple Developer account needed). macOS ties
-# Accessibility permission to the signature, so after installing a *new*
-# build you may need to re-enable EchoLocal under System Settings → Privacy &
-# Security → Accessibility (remove it with "–" and allow it again).
+# Accessibility permission to the exact signature, so a grant made for an
+# older build does not apply to a new one, even though the switch in System
+# Settings still looks on. The script therefore clears EchoLocal's old
+# Accessibility entry; allow it once more when the app asks.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -44,6 +45,12 @@ cp -R "$app" /Applications/
 # Built locally, so clear the quarantine flag Gatekeeper would otherwise check.
 xattr -dr com.apple.quarantine /Applications/EchoLocal.app 2>/dev/null || true
 
+echo "==> Clearing the old Accessibility permission (it belonged to the previous build)"
+tccutil reset Accessibility app.echolocal.desktop >/dev/null 2>&1 || true
+
 echo "==> Launching"
 open /Applications/EchoLocal.app
-echo "Done. EchoLocal is in your menu bar. Turn on 'Launch at login' in General to start it automatically."
+echo "Done. EchoLocal is in your menu bar."
+echo "If it asks for Accessibility access, click Allow (or turn EchoLocal on in"
+echo "System Settings > Privacy & Security > Accessibility). The shortcut starts"
+echo "working within a second, no restart needed."
