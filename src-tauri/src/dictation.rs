@@ -7,10 +7,12 @@
 //! or post-processing goes through a shared flag instead, since the worker is
 //! busy at that point.
 
-use crate::background::{self, BackgroundTranscriber, TranscribeError};
+use crate::background::{self, BackgroundTranscriber, SharedTexts, TranscribeError};
+use crate::hotkey::Hotkeys;
 use crate::overlay::{self, Kind};
+use crate::preview::LivePreview;
 use crate::state::{lock, notify_changed, AppState, EngineStatus};
-use crate::{ai, hotkey, tray};
+use crate::{ai, tray};
 use echolocal_audio::{Recording, RecordingCallbacks};
 use echolocal_core::audio::samples_to_ms;
 use echolocal_core::dictation::{decide, Decision, Phase, Trigger, MIN_RECORDING_MS};
@@ -79,6 +81,7 @@ struct Active {
     recording: Recording,
     /// Transcribes pieces of a long dictation while recording (needs VAD).
     background: Option<BackgroundTranscriber>,
+    preview: Option<LivePreview>,
     target: FocusTarget,
     pressed_at: Instant,
 }
@@ -110,7 +113,7 @@ impl Worker {
     }
 
     fn finish(&mut self) {
-        hotkey::set_cancel_enabled(&self.app, false);
+        self.app.state::<Hotkeys>().set_cancel_enabled(false);
         self.set_phase(Phase::Idle);
     }
 
@@ -158,23 +161,31 @@ impl Worker {
                 dictation.trigger(&app, Trigger::HotkeyReleased);
             })),
             on_segment: None,
+            on_preview: None,
         };
+        let pieces: SharedTexts = Default::default();
         // Pieces are cut at pauses, so this needs the VAD.
         let background = vad.is_some().then(|| {
-            let (transcriber, on_segment) = BackgroundTranscriber::start(&self.app);
+            let (transcriber, on_segment) = BackgroundTranscriber::start(&self.app, pieces.clone());
             callbacks.on_segment = Some(on_segment);
             transcriber
+        });
+        let preview = settings.live_preview.then(|| {
+            let (preview, on_preview) = LivePreview::start(&self.app, pieces);
+            callbacks.on_preview = Some(on_preview);
+            preview
         });
         match Recording::start(settings.microphone.as_deref(), vad, callbacks) {
             Ok(recording) => {
                 self.active = Some(Active {
                     recording,
                     background,
+                    preview,
                     target,
                     pressed_at,
                 });
                 self.set_phase(Phase::Recording);
-                hotkey::set_cancel_enabled(&self.app, true);
+                self.app.state::<Hotkeys>().set_cancel_enabled(true);
                 overlay::show(&self.app, Kind::Listening, "Listening");
                 log::info!(
                     "Recording (target: {}, mic open after {} ms)",
@@ -198,6 +209,9 @@ impl Worker {
 
     fn discard(&mut self) {
         if let Some(active) = self.active.take() {
+            if let Some(preview) = active.preview {
+                preview.stop();
+            }
             if let Some(vad) = active.recording.cancel() {
                 *lock(&self.state().vad) = Some(vad);
             }
@@ -221,6 +235,10 @@ impl Worker {
         // From here Esc aborts processing (Escape stays registered until
         // `finish`), including background pieces still being transcribed.
         self.set_phase(Phase::Transcribing);
+        // Free the engine for the real transcription right away.
+        if let Some(preview) = active.preview {
+            preview.stop();
+        }
         let mut metrics = DictationMetrics {
             mic_start_ms: active
                 .recording
@@ -262,9 +280,17 @@ impl Worker {
             released_at,
             &mut metrics,
         ) {
-            Ok(Some(method)) => {
+            Ok(Some((method, words))) => {
                 metrics.insertion_method = Some(method);
                 log::info!("Dictation: {}", metrics.summary());
+                let state = self.state();
+                let mut stats = lock(&state.stats);
+                stats.dictations += 1;
+                stats.words += words as u64;
+                stats.last_release_to_text_ms = Some(metrics.release_to_text_ms);
+                stats.last_audio_ms = Some(metrics.audio_ms);
+                drop(stats);
+                notify_changed(&self.app);
             }
             Ok(None) => {}
             Err(message) => {
@@ -283,7 +309,7 @@ impl Worker {
         tail: &[f32],
         released_at: Instant,
         metrics: &mut DictationMetrics,
-    ) -> Result<Option<InsertionMethod>, String> {
+    ) -> Result<Option<(InsertionMethod, usize)>, String> {
         let state = self.state();
         let settings = state.settings();
 
@@ -339,6 +365,7 @@ impl Worker {
             overlay::flash(&self.app, Kind::Notice, "No speech detected", FLASH);
             return Ok(None);
         }
+        overlay::set_text(&self.app, &text);
 
         // Optional cleanup / rewrite. Failures fall back to the raw transcript.
         let mut ai_failed = false;
@@ -388,7 +415,7 @@ impl Worker {
                     _ => (Kind::Inserted, "Inserted", Duration::from_millis(500)),
                 };
                 overlay::flash(&self.app, kind, message, duration);
-                Ok(Some(report.method))
+                Ok(Some((report.method, text.split_whitespace().count())))
             }
             Err(e) => {
                 log::error!("Insertion failed: {e:#}");

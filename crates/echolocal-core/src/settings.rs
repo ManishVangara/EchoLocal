@@ -89,20 +89,25 @@ impl AiSettings {
 #[serde(default)]
 pub struct Settings {
     pub model: ModelId,
-    /// Push-to-talk shortcut in Tauri accelerator syntax, e.g. `Alt+Space`.
+    /// Push-to-talk shortcut (see [`crate::shortcut`]), e.g. `OptRight` to
+    /// hold the right ⌥ key, or `Ctrl+Opt+Space`.
     pub shortcut: String,
     pub post_processing: PostProcessing,
     pub ai: AiSettings,
     pub launch_at_login: bool,
     /// Trim leading and trailing silence with voice activity detection.
     pub trim_silence: bool,
+    /// Show what is being heard in the overlay while recording.
+    pub live_preview: bool,
     /// Free the model's memory after this much inactivity.
     pub unload_model: ModelUnload,
     /// Input device name; `None` uses the system default microphone.
     pub microphone: Option<String>,
 }
 
-pub const DEFAULT_SHORTCUT: &str = "Alt+Space";
+/// Hold the right ⌥ key. It types nothing on its own, so it doesn't collide
+/// with other apps' shortcuts.
+pub const DEFAULT_SHORTCUT: &str = "OptRight";
 
 impl Default for Settings {
     fn default() -> Self {
@@ -113,6 +118,7 @@ impl Default for Settings {
             ai: AiSettings::default(),
             launch_at_login: false,
             trim_silence: true,
+            live_preview: true,
             unload_model: ModelUnload::default(),
             microphone: None,
         }

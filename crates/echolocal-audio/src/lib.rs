@@ -5,8 +5,8 @@ mod recorder;
 mod silero;
 
 pub use recorder::{
-    list_input_devices, LimitCallback, Recording, RecordingCallbacks, RecordingOutput,
-    SegmentCallback,
+    list_input_devices, LimitCallback, PreviewCallback, Recording, RecordingCallbacks,
+    RecordingOutput, SegmentCallback, PREVIEW_INTERVAL,
 };
 
 use echolocal_core::audio::{EnergyVad, VoiceActivityDetector};

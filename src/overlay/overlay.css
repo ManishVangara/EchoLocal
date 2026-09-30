@@ -8,80 +8,115 @@ body,
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
+  font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
 }
 
-#root {
+/* Content is anchored to the bottom of the (larger, transparent) window. */
+.stack {
+  height: 100%;
   display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  padding: 0 12px 6px;
+  box-sizing: border-box;
+}
+
+.transcript {
+  max-width: 100%;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: rgba(28, 28, 30, 0.82);
+  color: rgba(255, 255, 255, 0.95);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.12) inset;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  animation: rise 0.18s ease-out;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  max-width: 212px;
-  padding: 8px 16px;
+  gap: 9px;
+  height: 34px;
+  padding: 0 16px 0 13px;
   border-radius: 999px;
-  background: rgba(24, 24, 27, 0.88);
+  background: rgba(20, 20, 22, 0.9);
   color: #fafafa;
-  font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
   white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  animation: rise 0.18s ease-out;
 }
 
 .message {
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 420px;
 }
 
-.indicator {
-  flex: none;
-  width: 9px;
-  height: 9px;
+.bars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+}
+.bars span {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: #ff453a;
+  transform-origin: center;
+  animation: bounce 0.9s ease-in-out infinite;
+}
+
+.spinner {
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-}
-
-.listening .indicator {
-  background: #ff3b30;
-  animation: pulse 1.2s ease-in-out infinite;
-}
-
-.transcribing .indicator,
-.polishing .indicator {
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   border-top-color: #fff;
-  width: 8px;
-  height: 8px;
   animation: spin 0.7s linear infinite;
 }
 
 .icon {
-  flex: none;
   display: inline-grid;
   place-items: center;
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   border-radius: 50%;
   font-size: 11px;
   font-weight: 700;
 }
-.inserted .icon {
-  background: #34c759;
+.icon.ok {
+  background: #30d158;
   color: #fff;
 }
-.notice .icon {
-  background: rgba(255, 255, 255, 0.25);
-}
-.error .icon {
+.icon.warn {
   background: #ff9f0a;
   color: #1c1c1e;
 }
+.icon.info {
+  background: rgba(255, 255, 255, 0.25);
+}
 
-@keyframes pulse {
+@keyframes bounce {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
   50% {
-    opacity: 0.35;
-    transform: scale(0.8);
+    transform: scaleY(1);
   }
 }
 
@@ -91,10 +126,21 @@ body,
   }
 }
 
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .listening .indicator,
-  .transcribing .indicator,
-  .polishing .indicator {
+  .bars span,
+  .spinner,
+  .pill,
+  .transcript {
     animation: none;
+  }
+  .bars span {
+    transform: scaleY(0.7);
   }
 }

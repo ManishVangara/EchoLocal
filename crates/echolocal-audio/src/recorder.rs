@@ -50,12 +50,20 @@ pub type LimitCallback = Box<dyn FnOnce() + Send>;
 /// must return quickly (e.g. send to a channel).
 pub type SegmentCallback = Box<dyn FnMut(Vec<f32>) + Send>;
 
+/// Receives the not-yet-segmented speech so far (16 kHz, trimmed), about
+/// every [`PREVIEW_INTERVAL`], for a live transcript. Called from the capture
+/// thread: copy what you need and return quickly.
+pub type PreviewCallback = Box<dyn FnMut(&[f32]) + Send>;
+
+pub const PREVIEW_INTERVAL: Duration = Duration::from_millis(500);
+
 /// Optional notifications from an active recording.
 #[derive(Default)]
 pub struct RecordingCallbacks {
     pub on_limit: Option<LimitCallback>,
     /// Setting this enables splitting long recordings at pauses (needs VAD).
     pub on_segment: Option<SegmentCallback>,
+    pub on_preview: Option<PreviewCallback>,
 }
 
 pub struct RecordingOutput {
@@ -267,7 +275,10 @@ fn capture_thread(
     let RecordingCallbacks {
         mut on_limit,
         mut on_segment,
+        mut on_preview,
     } = callbacks;
+    let mut last_preview = Instant::now();
+    let mut last_preview_len = 0usize;
     let mut buffer = RecordingBuffer::new(vad);
     if on_segment.is_some() {
         buffer = buffer.with_segmentation(SegmentConfig::default());
@@ -294,7 +305,19 @@ fn capture_thread(
         buffer.push(&converted[..converted.len().min(room)]);
         if let Some(callback) = on_segment.as_mut() {
             while let Some(segment) = buffer.next_segment() {
+                last_preview_len = 0;
                 callback(segment);
+            }
+        }
+        if let Some(callback) = on_preview.as_mut() {
+            if last_preview.elapsed() >= PREVIEW_INTERVAL {
+                let pending = buffer.pending_speech();
+                // Skip when nothing new was said since the last preview.
+                if pending.len() != last_preview_len && pending.len() >= 4_800 {
+                    last_preview = Instant::now();
+                    last_preview_len = pending.len();
+                    callback(pending);
+                }
             }
         }
         if converted.len() >= room {

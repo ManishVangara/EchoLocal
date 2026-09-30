@@ -11,6 +11,7 @@ mod commands;
 mod dictation;
 mod hotkey;
 mod overlay;
+mod preview;
 mod state;
 mod tray;
 
@@ -52,18 +53,14 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     echolocal_engine::engine::init_backend();
     app.manage(AppState::new(settings_path, models_dir, silero));
-    app.manage(hotkey::HotkeyState::default());
-    app.manage(commands::ShortcutError::default());
+    let settings = handle.state::<AppState>().settings();
     app.manage(dictation::Dictation::start(&handle));
+    // Starts listening once Accessibility is granted (retries until then).
+    app.manage(hotkey::Hotkeys::start(&handle, settings.shortcut.clone()));
+    overlay::create(&handle)?;
     tray::create(&handle)?;
     echolocal_macos::refresh_keyboard_layout();
-
     let state = handle.state::<AppState>();
-    let settings = state.settings();
-    if let Err(e) = hotkey::register_dictation(&handle, &settings.shortcut) {
-        log::error!("{e}");
-        *state::lock(&handle.state::<commands::ShortcutError>().0) = Some(e);
-    }
 
     // Keep the selected model resident: repeat dictations skip loading.
     state::load_selected_model(&handle);
@@ -79,10 +76,23 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     // First run (or missing permissions): open settings so the user can
     // download a model and grant access.
-    if !state.store.is_downloaded(settings.model) || !echolocal_macos::accessibility_trusted() {
+    if !state.store.is_downloaded(settings.model)
+        || !echolocal_macos::accessibility_trusted()
+        || echolocal_macos::microphone_permission() != echolocal_macos::Permission::Granted
+    {
         show_settings(&handle);
     }
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn tauri_nspanel_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri_nspanel::init()
+}
+
+#[cfg(not(target_os = "macos"))]
+fn tauri_nspanel_plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::new("nspanel-noop").build()
 }
 
 pub fn run() {
@@ -99,7 +109,7 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(hotkey::plugin())
+        .plugin(tauri_nspanel_plugin())
         .setup(setup)
         .on_window_event(|window, event| {
             // Closing settings hides it; EchoLocal keeps running in the menu bar.
@@ -120,6 +130,9 @@ pub fn run() {
             commands::request_accessibility,
             commands::open_accessibility_settings,
             commands::open_microphone_settings,
+            commands::request_microphone,
+            commands::start_shortcut_capture,
+            commands::stop_shortcut_capture,
             commands::test_ai,
         ])
         .run(tauri::generate_context!())

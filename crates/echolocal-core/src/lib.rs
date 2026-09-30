@@ -12,6 +12,7 @@ pub mod metrics;
 pub mod resample;
 pub mod segment;
 pub mod settings;
+pub mod shortcut;
 pub mod text;
 
 pub use catalog::{ModelId, ModelSpec};

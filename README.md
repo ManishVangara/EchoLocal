@@ -13,36 +13,45 @@ no account, no cloud audio, no subscription.
   feels instant, and it is far simpler and more reliable than streaming.
 - **Long dictations stay fast:** past ~8 seconds, finished parts are transcribed
   at natural pauses while you keep talking, so release only waits for the last bit.
-- **Stays out of the way:** a menu-bar icon, a small "Listening" pill while
-  you talk, and a settings window you rarely open.
+- **See it as you speak:** a small floating pill shows that EchoLocal is
+  listening, with a live transcript of what it hears so far.
+- **Any shortcut:** hold a single key like Right ⌥ or fn, or use a combination
+  such as ⌃⌥Space.
+- **Stays out of the way:** lives in the menu bar; a settings window you rarely
+  open.
 - **Optional AI cleanup:** *Clean* or *Rewrite* the transcript with any
   OpenAI-compatible server (Ollama, LM Studio, a hosted API). Only the
   transcript text is sent, never audio. Off by default.
 
-## Getting started (development)
+## Install (use it every day)
 
 Requirements: macOS 13+ on Apple Silicon, Xcode Command Line Tools, CMake,
-[Rust](https://rustup.rs) (stable) and [Bun](https://bun.sh).
+[Rust](https://rustup.rs) and [Bun](https://bun.sh).
+
+```bash
+git clone https://github.com/ManishVangara/EchoLocal.git && cd EchoLocal
+./scripts/install-mac.sh
+```
+
+This builds `EchoLocal.app`, installs it into `/Applications` and launches it.
+A short setup walks you through microphone and Accessibility permission, the
+speech model download (v2 ≈ 730 MB, v3 ≈ 740 MB) and your shortcut. Then hold
+**Right ⌥** (changeable), speak, and release. **Esc** cancels.
+
+See [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) for DMG releases, signing and
+notarization.
+
+## Development
 
 ```bash
 bun install
 ./scripts/fetch-resources.sh      # Silero VAD model (optional; falls back to an energy VAD)
-bun run tauri dev                 # if CMake complains: CMAKE_POLICY_VERSION_MINIMUM=3.5 bun run tauri dev
+bun run tauri dev                 # with CMake 4: export CMAKE_POLICY_VERSION_MINIMUM=3.5
 ```
 
-On first launch the settings window opens:
-
-1. **Download a speech model** (v2 ≈ 730 MB, v3 ≈ 740 MB; the exact size of
-   the file you download is shown).
-2. **Allow Accessibility access** — needed to type into other apps.
-   macOS asks for **Microphone** access the first time you dictate.
-3. Hold **⌥ Space** (changeable), speak, release. **Esc** cancels.
-
-Build a signed-off-locally app bundle with `bun run tauri build`.
-
-> During development macOS attributes permissions to the binary that asked, so
-> after a rebuild you may need to toggle EchoLocal off and on again under
-> *System Settings → Privacy & Security → Accessibility*.
+> During development macOS attributes permissions to the terminal that
+> launched the app, so you may need to allow Terminal (or iTerm) under
+> Privacy & Security → Accessibility.
 
 ## Benchmarking Parakeet on your Mac
 
@@ -101,8 +110,10 @@ bun run typecheck
 - [ ] Phase 7: per-app profiles (e.g. Terminal → Raw, Mail → Clean)
 - [x] Free model memory when idle (default 15 min), reloading while you speak
 - [x] Background transcription of long dictations, cut at pauses
-- [ ] Modifier-only shortcuts (e.g. hold Right ⌥), API key in Keychain,
-      receipt-based clipboard restore
+- [x] Live transcript while speaking, modifier-only shortcuts (hold Right ⌥)
+- [x] Standalone app install, release workflow (see docs/DISTRIBUTION.md)
+- [ ] Settings on the overlay itself, API key in Keychain, receipt-based
+      clipboard restore, auto-updates
 
 ## License
 

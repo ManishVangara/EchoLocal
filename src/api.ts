@@ -6,6 +6,7 @@ export type ModelId = "parakeet-tdt-v2" | "parakeet-tdt-v3";
 export type PostProcessing = "off" | "clean" | "rewrite";
 export type ModelUnload = "never" | "after5_minutes" | "after15_minutes" | "after1_hour";
 export type Phase = "idle" | "preparing" | "recording" | "transcribing" | "post_processing" | "inserting";
+export type Permission = "granted" | "denied" | "not_determined" | "unknown";
 
 export interface AiSettings {
   base_url: string;
@@ -21,6 +22,7 @@ export interface Settings {
   ai: AiSettings;
   launch_at_login: boolean;
   trim_silence: boolean;
+  live_preview: boolean;
   unload_model: ModelUnload;
   microphone: string | null;
 }
@@ -44,13 +46,29 @@ export type EngineStatus =
   | { status: "unloaded"; model: ModelId }
   | { status: "failed"; model: ModelId; error: string };
 
+export type HotkeyStatus =
+  | { state: "active" }
+  | { state: "needs_accessibility" }
+  | { state: "error"; detail: string };
+
+export interface SessionStats {
+  dictations: number;
+  words: number;
+  last_release_to_text_ms: number | null;
+  last_audio_ms: number | null;
+}
+
 export interface Snapshot {
   settings: Settings;
   models: ModelView[];
   engine: EngineStatus;
   phase: Phase;
   accessibility: boolean;
-  shortcut_error: string | null;
+  microphone: Permission;
+  shortcut_label: string;
+  hotkey: HotkeyStatus;
+  stats: SessionStats;
+  version: string;
 }
 
 export interface DownloadProgress {
@@ -58,6 +76,12 @@ export interface DownloadProgress {
   downloaded: number;
   total: number;
 }
+
+export type CaptureEvent =
+  | { state: "pending"; label: string }
+  | { state: "done"; shortcut: string; label: string }
+  | { state: "invalid"; message: string }
+  | { state: "cancelled" };
 
 export const api = {
   getState: () => invoke<Snapshot>("get_state"),
@@ -68,6 +92,14 @@ export const api = {
   deleteModel: (id: ModelId) => invoke<void>("delete_model", { id }),
   requestAccessibility: () => invoke<boolean>("request_accessibility"),
   openAccessibilitySettings: () => invoke<void>("open_accessibility_settings"),
+  requestMicrophone: () => invoke<void>("request_microphone"),
   openMicrophoneSettings: () => invoke<void>("open_microphone_settings"),
+  startShortcutCapture: () => invoke<void>("start_shortcut_capture"),
+  stopShortcutCapture: () => invoke<void>("stop_shortcut_capture"),
   testAi: (ai: AiSettings, mode: PostProcessing) => invoke<string>("test_ai", { ai, mode }),
 };
+
+/** Settings are ready for daily use: a model, both permissions. */
+export function setupComplete(s: Snapshot): boolean {
+  return s.models.some((m) => m.selected && m.downloaded) && s.accessibility && s.microphone === "granted";
+}

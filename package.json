@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "tauri": "tauri",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "app:build": "tauri build --bundles app",
+    "app:install": "./scripts/install-mac.sh"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.8.0",

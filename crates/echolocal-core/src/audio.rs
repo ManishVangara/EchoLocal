@@ -197,6 +197,21 @@ impl RecordingBuffer {
         }
     }
 
+    /// The speech recorded since the last handed-out segment, trimmed, for
+    /// a live preview. Empty if there's no speech yet.
+    pub fn pending_speech(&self) -> &[f32] {
+        let start = self.committed_frames * VAD_FRAME_SAMPLES;
+        let tail = &self.samples[start.min(self.samples.len())..];
+        if self.vad.is_none() {
+            return tail;
+        }
+        let flags = &self.speech_frames[self.committed_frames.min(self.speech_frames.len())..];
+        match speech_range(flags, tail.len(), &TrimConfig::default()) {
+            Some(range) => &tail[range],
+            None => &[],
+        }
+    }
+
     pub fn finish(self) -> RecordedAudio {
         self.into_parts().0
     }
@@ -469,6 +484,23 @@ mod tests {
         let recorded = buf.finish();
         assert_eq!(recorded.committed_samples, 0);
         assert!(samples_to_ms(recorded.speech().len()) >= 2000);
+    }
+
+    #[test]
+    fn pending_speech_follows_segments() {
+        let mut buf = RecordingBuffer::new(Some(Box::new(EnergyVad::new())))
+            .with_segmentation(small_segments());
+        buf.push(&silence(500));
+        assert!(buf.pending_speech().is_empty());
+        buf.push(&tone(4000, 0.3));
+        buf.push(&silence(600));
+        let before = samples_to_ms(buf.pending_speech().len());
+        assert!(before >= 4000, "{before}");
+        assert!(buf.next_segment().is_some());
+        // Only audio after the handed-out piece remains pending.
+        buf.push(&tone(1000, 0.3));
+        let after = samples_to_ms(buf.pending_speech().len());
+        assert!((1000..=2000).contains(&after), "{after}");
     }
 
     #[test]

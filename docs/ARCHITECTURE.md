@@ -74,6 +74,16 @@ trimming turned off (no VAD), are transcribed in one pass as before. Each
 dictation logs how many pieces ran in the background and how long release
 waited for them.
 
+### Live transcript while speaking
+
+About every 500 ms the recorder hands the speech recorded since the last
+finished piece to a preview worker (`src-tauri/src/preview.rs`), which
+transcribes the newest snapshot and shows "finished pieces + current
+snapshot" above the overlay pill. The preview is display-only (the inserted
+text comes from the normal release path), uses the engine only when it is
+free (`try_lock`, so it never delays a background piece), and is aborted the
+moment the key is released so the final transcription starts immediately.
+
 ### Memory: unloading when idle
 
 A loaded model holds roughly 0.7–1 GB. After a configurable idle period
@@ -92,6 +102,21 @@ actual file downloaded. Downloads stream to `<file>.part` while hashing,
 resume with HTTP `Range`, and are renamed into place only after the size and
 hash match. Both models currently use the Q8_0 quantization; changing that is a
 catalog edit.
+
+## Shortcut and overlay
+
+- **Shortcut** (`src-tauri/src/hotkey.rs`): `handy-keys` (from Handy) provides
+  press/release events for key combinations *and* single modifiers, with left
+  and right sides distinguished (hold Right ⌥). Combinations are blocked from
+  reaching other apps; modifier-only shortcuts are not, so typing ⌥E still
+  works. It needs Accessibility, so the listener retries until permission is
+  granted. Recording a new shortcut listens to the real keyboard
+  (`echolocal_core::shortcut::ShortcutCapture`), with the current shortcut
+  paused meanwhile.
+- **Overlay** (`src-tauri/src/overlay.rs`): a non-activating `NSPanel`
+  (`tauri-nspanel`) at status-bar level, on all Spaces and over full-screen
+  apps, ignoring the mouse, shown with `orderFrontRegardless` from the main
+  thread. It never takes focus from the app being dictated into.
 
 ## Controlling the computer (macOS)
 

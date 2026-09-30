@@ -1,8 +1,11 @@
 //! IPC commands used by the settings window.
 
-use crate::state::{self, AppState, EngineStatus, ModelView};
+use crate::hotkey::{self, HotkeyStatus, Hotkeys};
+use crate::state::{self, AppState, EngineStatus, ModelView, SessionStats};
 use echolocal_core::dictation::Phase;
+use echolocal_core::shortcut::shortcut_label;
 use echolocal_core::{AiSettings, ModelId, PostProcessing, Settings};
+use echolocal_macos::Permission;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_autostart::ManagerExt;
@@ -14,22 +17,28 @@ pub struct Snapshot {
     engine: EngineStatus,
     phase: Phase,
     accessibility: bool,
-    shortcut_error: Option<String>,
+    microphone: Permission,
+    shortcut_label: String,
+    hotkey: HotkeyStatus,
+    stats: SessionStats,
+    version: String,
 }
-
-/// The last shortcut registration error, shown in settings until resolved.
-#[derive(Default)]
-pub struct ShortcutError(pub std::sync::Mutex<Option<String>>);
 
 fn snapshot(app: &AppHandle) -> Snapshot {
     let state = app.state::<AppState>();
+    let settings = state.settings();
+    let stats = state::lock(&state.stats).clone();
     Snapshot {
-        settings: state.settings(),
+        shortcut_label: shortcut_label(&settings.shortcut),
+        settings,
         models: state::model_views(app),
         engine: state.engine_status(),
         phase: state.phase(),
         accessibility: echolocal_macos::accessibility_trusted(),
-        shortcut_error: state::lock(&app.state::<ShortcutError>().0).clone(),
+        microphone: echolocal_macos::microphone_permission(),
+        hotkey: app.state::<Hotkeys>().status(),
+        stats,
+        version: app.package_info().version.to_string(),
     }
 }
 
@@ -54,8 +63,7 @@ pub fn save_settings(
     settings.shortcut = settings.shortcut.trim().to_string();
 
     if settings.shortcut != previous.shortcut {
-        crate::hotkey::register_dictation(&app, &settings.shortcut)?;
-        *state::lock(&app.state::<ShortcutError>().0) = None;
+        app.state::<Hotkeys>().set_shortcut(&settings.shortcut)?;
     }
     if settings.launch_at_login != previous.launch_at_login {
         let autolaunch = app.autolaunch();
@@ -99,6 +107,23 @@ pub fn request_accessibility() -> bool {
 #[tauri::command]
 pub fn open_accessibility_settings() {
     echolocal_macos::open_accessibility_settings();
+}
+
+/// Show the microphone permission prompt; the window refreshes when answered.
+#[tauri::command]
+pub fn request_microphone(app: AppHandle) {
+    echolocal_macos::request_microphone(move |_| state::notify_changed(&app));
+}
+
+/// Begin recording a new push-to-talk shortcut (see [`hotkey::CAPTURE_EVENT`]).
+#[tauri::command]
+pub fn start_shortcut_capture(app: AppHandle) -> Result<(), String> {
+    hotkey::start_capture(&app)
+}
+
+#[tauri::command]
+pub fn stop_shortcut_capture(app: AppHandle) {
+    hotkey::stop_capture(&app);
 }
 
 #[tauri::command]

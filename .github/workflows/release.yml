@@ -1,0 +1,56 @@
+name: Release
+
+# Push a tag like v0.2.0 to build a DMG and attach it to a draft GitHub
+# release. Without Apple signing secrets the app is ad-hoc signed (fine for
+# yourself; others must right-click → Open the first time). Add the secrets
+# below to produce a signed, notarized build anyone can open normally.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    env:
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+      HAS_APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Fetch Silero VAD model
+        run: ./scripts/fetch-resources.sh || true
+      # Unsigned secrets are empty strings, which would make the bundler try
+      # to sign with a blank identity, so pick one of two steps.
+      - name: Build (ad-hoc signed)
+        if: env.HAS_APPLE_SIGNING != 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: EchoLocal ${{ github.ref_name }}
+          releaseDraft: true
+          args: --bundles app,dmg
+      - name: Build (Developer ID signed and notarized)
+        if: env.HAS_APPLE_SIGNING == 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: EchoLocal ${{ github.ref_name }}
+          releaseDraft: true
+          args: --bundles app,dmg

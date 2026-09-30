@@ -46,6 +46,33 @@ pub struct InsertionReport {
     pub landed: Landed,
 }
 
+/// State of a macOS privacy permission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Permission {
+    Granted,
+    Denied,
+    /// The user hasn't been asked yet.
+    NotDetermined,
+    Unknown,
+}
+
+/// Microphone permission.
+pub fn microphone_permission() -> Permission {
+    #[cfg(target_os = "macos")]
+    return macos::microphone::status();
+    #[cfg(not(target_os = "macos"))]
+    Permission::Unknown
+}
+
+/// Ask for microphone access (shows the system prompt the first time).
+pub fn request_microphone(done: impl Fn(bool) + Send + 'static) {
+    #[cfg(target_os = "macos")]
+    macos::microphone::request(done);
+    #[cfg(not(target_os = "macos"))]
+    done(false);
+}
+
 /// Whether EchoLocal may use Accessibility and post keyboard events.
 pub fn accessibility_trusted() -> bool {
     #[cfg(target_os = "macos")]

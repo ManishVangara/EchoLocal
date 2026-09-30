@@ -39,6 +39,15 @@ pub enum EngineStatus {
     },
 }
 
+/// Numbers for the home screen. Kept in memory only (no transcript history).
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct SessionStats {
+    pub dictations: u32,
+    pub words: u64,
+    pub last_release_to_text_ms: Option<u64>,
+    pub last_audio_ms: Option<u64>,
+}
+
 pub struct AppState {
     pub settings_path: PathBuf,
     settings: Mutex<Settings>,
@@ -54,6 +63,7 @@ pub struct AppState {
     /// Reused across recordings (Silero takes a moment to load).
     pub vad: Mutex<Option<Box<dyn VoiceActivityDetector>>>,
     pub silero_model: Option<PathBuf>,
+    pub stats: Mutex<SessionStats>,
 }
 
 /// Lock a mutex, recovering from poisoning (a panicked holder must not take
@@ -78,6 +88,7 @@ impl AppState {
             download_progress: Mutex::new(HashMap::new()),
             vad: Mutex::new(None),
             silero_model,
+            stats: Mutex::new(SessionStats::default()),
         }
     }
 
@@ -116,6 +127,16 @@ impl AppState {
 
     pub fn engine(&self) -> MutexGuard<'_, Option<Box<dyn TranscriptionEngine>>> {
         lock(&self.engine)
+    }
+
+    /// The engine if nobody else is using it right now (for optional work
+    /// like the live preview, which must never delay real transcription).
+    pub fn try_engine(&self) -> Option<MutexGuard<'_, Option<Box<dyn TranscriptionEngine>>>> {
+        match self.engine.try_lock() {
+            Ok(guard) => Some(guard),
+            Err(TryLockError::Poisoned(e)) => Some(e.into_inner()),
+            Err(TryLockError::WouldBlock) => None,
+        }
     }
 
     /// Record that the model was just used, resetting the idle timer.

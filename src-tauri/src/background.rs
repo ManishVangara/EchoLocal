@@ -14,7 +14,7 @@ use echolocal_core::text::normalize_transcript;
 use echolocal_engine::{EngineError, Transcription};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::Instant;
 use tauri::{AppHandle, Manager};
@@ -73,6 +73,9 @@ pub struct Pieces {
     pub inference_ms: u64,
 }
 
+/// Transcripts of finished pieces, shared with the live preview.
+pub type SharedTexts = Arc<Mutex<Vec<String>>>;
+
 pub struct BackgroundTranscriber {
     thread: JoinHandle<Result<Pieces, TranscribeError>>,
     abandoned: Arc<AtomicBool>,
@@ -80,7 +83,8 @@ pub struct BackgroundTranscriber {
 
 impl BackgroundTranscriber {
     /// Start the worker; pass the returned callback to the recorder.
-    pub fn start(app: &AppHandle) -> (Self, SegmentCallback) {
+    /// Finished piece texts are also appended to `shared` as they complete.
+    pub fn start(app: &AppHandle, shared: SharedTexts) -> (Self, SegmentCallback) {
         let (tx, rx) = mpsc::channel::<Vec<f32>>();
         let abandoned = Arc::new(AtomicBool::new(false));
         let flag = abandoned.clone();
@@ -103,7 +107,9 @@ impl BackgroundTranscriber {
                     );
                     pieces.speech_ms += samples_to_ms(segment.len());
                     pieces.inference_ms += transcription.inference_ms;
-                    pieces.texts.push(normalize_transcript(&transcription.text));
+                    let text = normalize_transcript(&transcription.text);
+                    state::lock(&shared).push(text.clone());
+                    pieces.texts.push(text);
                 }
                 Ok(pieces)
             })

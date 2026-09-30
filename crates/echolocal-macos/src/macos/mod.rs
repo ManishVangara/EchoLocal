@@ -3,6 +3,7 @@ mod ax;
 mod events;
 mod ffi;
 pub mod keyboard;
+pub mod microphone;
 mod pasteboard;
 
 use crate::{FocusTarget, InsertOptions, InsertionReport};
