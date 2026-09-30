@@ -1,0 +1,19 @@
+[package]
+name = "echolocal-audio"
+description = "Microphone capture into an in-memory 16 kHz buffer, with Silero voice activity detection."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["silero"]
+# Silero VAD via ONNX Runtime. Without it the built-in energy detector is used.
+silero = ["dep:vad-rs"]
+
+[dependencies]
+echolocal-core.workspace = true
+anyhow.workspace = true
+log.workspace = true
+cpal = "0.16"
+rtrb = "0.3"
+vad-rs = { git = "https://github.com/cjpais/vad-rs", rev = "2a412ed858695b9251f3f5a1a20d95b59fa7c498", default-features = false, optional = true }

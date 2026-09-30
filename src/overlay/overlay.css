@@ -1,0 +1,272 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+  font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  color: #fafafa;
+}
+
+/* The window is sized to the card plus a small margin for its shadow. */
+.frame {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.surface,
+.pill,
+.card {
+  /* Midnight glass, from the logo's darkest tone. */
+  background: rgba(13, 17, 48, 0.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 8px 28px rgba(8, 10, 32, 0.4), 0 0 0 0.5px rgba(164, 174, 248, 0.28) inset;
+  animation: rise 0.16s ease-out;
+}
+
+/* ---------- Pill ---------- */
+
+.pill {
+  height: 40px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.pill .message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Card ---------- */
+
+.card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 18px;
+  padding: 10px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px;
+}
+.target {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+}
+.target img {
+  flex: none;
+  border-radius: 4px;
+}
+.target-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #6b7be5;
+}
+.target-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.modes {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+  background: rgba(164, 174, 248, 0.1);
+  margin-right: 4px;
+}
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: default;
+}
+.modes button {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.modes button:hover {
+  color: #fff;
+}
+.modes button.active {
+  background: linear-gradient(135deg, rgba(107, 123, 229, 0.75), rgba(139, 111, 224, 0.75));
+  color: #fff;
+}
+.icon-button {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Newest words stay at the bottom; older lines slide off the top. */
+.transcript {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.38;
+  color: rgba(255, 255, 255, 0.96);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+.large .transcript {
+  font-size: 15px;
+}
+.transcript.empty {
+  color: rgba(255, 255, 255, 0.4);
+  justify-content: center;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.card-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 22px;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.status .message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Waveform & indicators ---------- */
+
+.waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+}
+.waveform span {
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #a4aef8 0%, #6b7be5 50%, #8b6fe0 100%);
+  transform-origin: center;
+  transition: transform 70ms linear;
+}
+.waveform.idle span {
+  background: rgba(164, 174, 248, 0.35);
+}
+.pill .waveform {
+  height: 18px;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a48cf2;
+  box-shadow: 0 0 8px #8b6fe0;
+}
+.spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: #fff;
+  animation: spin 0.7s linear infinite;
+}
+.icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 700;
+  flex: none;
+}
+.icon.ok {
+  background: #30d158;
+  color: #fff;
+}
+.icon.warn {
+  background: #ff9f0a;
+  color: #1c1c1e;
+}
+.icon.info {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pill,
+  .card,
+  .spinner {
+    animation: none;
+  }
+  .waveform span {
+    transition: none;
+  }
+}

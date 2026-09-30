@@ -1,0 +1,21 @@
+[package]
+name = "echolocal-macos"
+description = "macOS integration for EchoLocal: focus capture, Accessibility, keyboard events, keyboard layouts and the clipboard."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+echolocal-core.workspace = true
+anyhow.workspace = true
+log.workspace = true
+serde.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+core-graphics = { version = "0.24", features = ["elcapitan"] }
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSData", "NSArray", "NSDictionary"] }
+objc2-av-foundation = { version = "0.3", default-features = false, features = ["std", "AVCaptureDevice", "AVMediaFormat", "block2"] }
+block2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "libc", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSPasteboard", "NSPasteboardItem", "NSRunningApplication", "NSWorkspace"] }

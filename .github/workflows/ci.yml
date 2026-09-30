@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: Build and test (macOS, Apple Silicon)
+    runs-on: macos-14
+    env:
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - uses: oven-sh/setup-bun@v2
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+      - name: Type-check and build frontend
+        run: bun run build
+      - name: Formatting
+        run: cargo fmt --all -- --check
+      - name: Tests
+        run: cargo test -p echolocal-core -p echolocal-engine -p echolocal-macos
+      - name: Clippy (whole app, native macOS build)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Build app bundle
+        run: bun run tauri build --bundles app --debug

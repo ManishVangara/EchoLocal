@@ -1,0 +1,35 @@
+[package]
+name = "echolocal-engine"
+description = "Parakeet speech-to-text for EchoLocal via transcribe.cpp, plus model download and benchmarking."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["native"]
+# Links transcribe.cpp. Without it the engine compiles but every load fails;
+# used only to type-check the app for macOS from a non-macOS machine.
+native = ["dep:transcribe-cpp"]
+
+[dependencies]
+echolocal-core.workspace = true
+anyhow.workspace = true
+log.workspace = true
+thiserror.workspace = true
+hound = "3.5"
+sha2 = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
+
+# Metal (the crate's default feature) on macOS; CPU elsewhere.
+[target.'cfg(target_os = "macos")'.dependencies]
+transcribe-cpp = { version = "0.2.4", optional = true }
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+transcribe-cpp = { version = "0.2.4", optional = true, default-features = false }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[[bin]]
+name = "echolocal-bench"
+path = "src/bin/echolocal-bench.rs"
