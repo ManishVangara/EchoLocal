@@ -1,0 +1,37 @@
+[package]
+name = "echolocal"
+description = "EchoLocal — local-first push-to-talk dictation"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+default-run = "echolocal"
+
+[lib]
+name = "echolocal_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+default = ["native-engine", "silero"]
+# Link transcribe.cpp (disable only to type-check without a C++ toolchain).
+native-engine = ["echolocal-engine/native"]
+# Silero VAD via ONNX Runtime (otherwise the built-in energy VAD is used).
+silero = ["echolocal-audio/silero"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+echolocal-core.workspace = true
+echolocal-engine.workspace = true
+echolocal-audio.workspace = true
+echolocal-macos.workspace = true
+anyhow.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tauri = { version = "2", features = ["tray-icon", "macos-private-api", "image-png"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-log = "2"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }

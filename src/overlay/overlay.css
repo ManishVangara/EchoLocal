@@ -1,0 +1,100 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 212px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(24, 24, 27, 0.88);
+  color: #fafafa;
+  font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
+  white-space: nowrap;
+}
+
+.message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.indicator {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.listening .indicator {
+  background: #ff3b30;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.transcribing .indicator,
+.polishing .indicator {
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  width: 8px;
+  height: 8px;
+  animation: spin 0.7s linear infinite;
+}
+
+.icon {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+.inserted .icon {
+  background: #34c759;
+  color: #fff;
+}
+.notice .icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+.error .icon {
+  background: #ff9f0a;
+  color: #1c1c1e;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .listening .indicator,
+  .transcribing .indicator,
+  .polishing .indicator {
+    animation: none;
+  }
+}
