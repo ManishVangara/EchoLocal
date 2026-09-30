@@ -54,6 +54,10 @@ export default function App() {
     <div className="shell">
       <nav className="sidebar" aria-label="Sections">
         <div className="sidebar-top" data-tauri-drag-region />
+        <div className="brand" data-tauri-drag-region>
+          <img src="/app-icon.png" alt="" width={28} height={28} />
+          <span className="brand-name wordmark">EchoLocal</span>
+        </div>
         {NAV.map(([id, label, Icon]) => (
           <button
             key={id}

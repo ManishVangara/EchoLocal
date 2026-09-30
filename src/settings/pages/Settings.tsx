@@ -195,7 +195,7 @@ export function AboutPage({ app }: { app: AppState }) {
   return (
     <div className="page about">
       <img className="about-icon" src="/app-icon.png" alt="" width={72} height={72} />
-      <h1>EchoLocal</h1>
+      <h1 className="wordmark">EchoLocal</h1>
       <p className="hint">Version {app.snapshot.version}</p>
       <p>
         Local push-to-talk dictation with NVIDIA Parakeet. Speech recognition runs on this Mac; no account, no cloud

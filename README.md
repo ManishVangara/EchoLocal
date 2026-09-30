@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/brand/icon-1024.png" width="128" alt="EchoLocal icon"></p>
+
 # EchoLocal
 
 Local-first push-to-talk dictation for macOS on Apple Silicon.

@@ -35,8 +35,10 @@ export function Onboarding({ app, onDone }: { app: AppState; onDone: () => void 
       <div className="onboarding-body">
         {step === 0 && (
           <div className="welcome">
-            <img src="/app-icon.png" alt="" width={96} height={96} />
-            <h1>Welcome to EchoLocal</h1>
+            <img src="/app-icon.png" alt="" width={120} height={120} />
+            <h1>
+              Welcome to <span className="wordmark">EchoLocal</span>
+            </h1>
             <p>
               Hold a key, speak, release — your words appear wherever you're typing. Everything is transcribed on this
               Mac, privately.
