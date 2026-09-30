@@ -3,6 +3,7 @@ import { useAppState } from "./useAppState";
 import { Onboarding } from "./Onboarding";
 import { HomePage } from "./pages/Home";
 import { AboutPage, GeneralPage, ModelPage, ShortcutPage, WritingPage } from "./pages/Settings";
+import { Wordmark } from "./components/Controls";
 import { GearIcon, HomeIcon, InfoIcon, KeyboardIcon, ModelIcon, SparkIcon } from "./components/Icons";
 
 export type Page = "home" | "model" | "shortcut" | "writing" | "general" | "about";
@@ -56,7 +57,7 @@ export default function App() {
         <div className="sidebar-top" data-tauri-drag-region />
         <div className="brand" data-tauri-drag-region>
           <img src="/app-icon.png" alt="" width={28} height={28} />
-          <span className="brand-name wordmark">EchoLocal</span>
+          <Wordmark className="brand-name" />
         </div>
         {NAV.map(([id, label, Icon]) => (
           <button

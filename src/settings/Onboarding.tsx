@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { AppState } from "./useAppState";
-import { Keycap } from "./components/Controls";
+import { Keycap, Wordmark } from "./components/Controls";
 import { ModelPicker, Permissions, ShortcutRecorder } from "./components/Features";
 
 const STEPS = ["Welcome", "Permissions", "Speech model", "Shortcut", "Try it"] as const;
@@ -37,8 +37,9 @@ export function Onboarding({ app, onDone }: { app: AppState; onDone: () => void 
           <div className="welcome">
             <img src="/app-icon.png" alt="" width={120} height={120} />
             <h1>
-              Welcome to <span className="wordmark">EchoLocal</span>
+              Welcome to <Wordmark />
             </h1>
+            <p className="tagline">Speak it. Typed. Locally.</p>
             <p>
               Hold a key, speak, release — your words appear wherever you're typing. Everything is transcribed on this
               Mac, privately.

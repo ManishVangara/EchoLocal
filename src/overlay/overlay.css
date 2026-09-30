@@ -9,10 +9,10 @@ body,
   user-select: none;
   cursor: default;
   font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  color: #fafafa;
+  color: #eef1ff;
 }
 
-/* The window is sized to the card plus a small margin for its shadow. */
+/* The window is sized to the card plus a small margin for its glow. */
 .frame {
   height: 100%;
   box-sizing: border-box;
@@ -22,15 +22,37 @@ body,
   justify-content: center;
 }
 
-.surface,
-.pill,
-.card {
-  /* Midnight glass, from the logo's darkest tone. */
-  background: rgba(13, 17, 48, 0.9);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  backdrop-filter: blur(24px) saturate(1.4);
-  box-shadow: 0 8px 28px rgba(8, 10, 32, 0.4), 0 0 0 0.5px rgba(164, 174, 248, 0.28) inset;
+/* ---------- Glass ----------
+   Night-blue glass lit from the top left in blue and from the bottom right in
+   ember, like the logo, with a gradient hairline rim and a top highlight. The
+   fill stays mostly opaque: a transparent window can't blur the desktop. */
+
+.glass {
+  position: relative;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(59, 123, 255, 0.24), transparent 55%),
+    radial-gradient(120% 140% at 100% 100%, rgba(255, 122, 50, 0.16), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0) 40%),
+    rgba(8, 12, 40, 0.88);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: 0 8px 26px rgba(2, 4, 24, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   animation: rise 0.16s ease-out;
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(120deg, rgba(122, 164, 255, 0.75), rgba(154, 140, 255, 0.3) 50%, rgba(255, 160, 98, 0.7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+.glass.error::before {
+  background: linear-gradient(120deg, rgba(255, 160, 98, 0.85), rgba(255, 90, 60, 0.6));
 }
 
 /* ---------- Pill ---------- */
@@ -41,7 +63,7 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 0 16px 0 14px;
+  padding: 0 16px 0 6px;
   border-radius: 999px;
   white-space: nowrap;
   max-width: 100%;
@@ -57,7 +79,7 @@ body,
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  border-radius: 18px;
+  border-radius: 20px;
   padding: 10px 14px 10px;
   display: flex;
   flex-direction: column;
@@ -76,7 +98,7 @@ body,
   align-items: center;
   gap: 7px;
   min-width: 0;
-  color: rgba(255, 255, 255, 0.72);
+  color: rgba(238, 241, 255, 0.72);
   font-size: 12px;
 }
 .target img {
@@ -87,7 +109,8 @@ body,
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #6b7be5;
+  background: #7aa4ff;
+  box-shadow: 0 0 8px #3b7bff;
 }
 .target-name {
   overflow: hidden;
@@ -105,8 +128,9 @@ body,
   display: inline-flex;
   padding: 2px;
   gap: 2px;
-  border-radius: 8px;
-  background: rgba(164, 174, 248, 0.1);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   margin-right: 4px;
 }
 button {
@@ -118,24 +142,25 @@ button {
 }
 .modes button {
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 6px;
-  color: rgba(255, 255, 255, 0.65);
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: rgba(238, 241, 255, 0.62);
 }
 .modes button:hover {
   color: #fff;
 }
 .modes button.active {
-  background: linear-gradient(135deg, rgba(107, 123, 229, 0.75), rgba(139, 111, 224, 0.75));
+  background: linear-gradient(120deg, #3b7bff, #6a5cff 60%, #9a5cff);
   color: #fff;
+  box-shadow: 0 2px 10px rgba(59, 123, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 .icon-button {
   width: 24px;
   height: 24px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
-  color: rgba(255, 255, 255, 0.6);
+  border-radius: 999px;
+  color: rgba(238, 241, 255, 0.6);
 }
 .icon-button:hover {
   background: rgba(255, 255, 255, 0.12);
@@ -153,7 +178,7 @@ button {
   font-size: 14px;
   font-weight: 400;
   line-height: 1.38;
-  color: rgba(255, 255, 255, 0.96);
+  color: rgba(245, 247, 255, 0.97);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
   mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
 }
@@ -161,7 +186,7 @@ button {
   font-size: 15px;
 }
 .transcript.empty {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(238, 241, 255, 0.4);
   justify-content: center;
   -webkit-mask-image: none;
   mask-image: none;
@@ -172,23 +197,112 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  height: 22px;
+  height: 26px;
 }
 .status {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(238, 241, 255, 0.82);
   white-space: nowrap;
-  overflow: hidden;
+  min-width: 0;
 }
 .status .message {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-/* ---------- Waveform & indicators ---------- */
+/* ---------- Orb ---------- */
+
+.orb {
+  position: relative;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+}
+.pill .orb {
+  width: 28px;
+  height: 28px;
+}
+.orb-body {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.75) 0, rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at 78% 82%, rgba(255, 138, 61, 0.9) 0, rgba(255, 138, 61, 0) 48%),
+    radial-gradient(circle at 40% 40%, #7aa4ff 0, #3b7bff 45%, #3a22b8 100%);
+  box-shadow: 0 0 12px rgba(59, 123, 255, 0.55), inset 0 -2px 4px rgba(10, 10, 60, 0.45);
+  transition: transform 70ms linear;
+}
+.orb-body svg {
+  width: 58%;
+  height: 58%;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 40, 0.4));
+}
+.orb.inserted .orb-body {
+  box-shadow: 0 0 14px rgba(122, 164, 255, 0.8), inset 0 -2px 4px rgba(10, 10, 60, 0.45);
+}
+.orb.error .orb-body {
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.7) 0, rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at 45% 45%, #ffb070 0, #ff8a3d 45%, #d63a24 100%);
+  box-shadow: 0 0 12px rgba(255, 122, 50, 0.6), inset 0 -2px 4px rgba(90, 20, 0, 0.35);
+}
+.orb.notice .orb-body {
+  background:
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.6) 0, rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at 45% 45%, #5d6aa8 0, #343d78 60%, #1d2355 100%);
+  box-shadow: 0 0 8px rgba(122, 164, 255, 0.3);
+}
+/* A ring that swells with the voice. */
+.orb-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(122, 164, 255, 0.55);
+  box-shadow: 0 0 10px rgba(122, 92, 255, 0.4);
+  transition: transform 90ms linear;
+}
+.orb.listening .orb-ring::after {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255, 160, 98, 0.5);
+  animation: ripple 1.6s ease-out infinite;
+}
+.orb-bars {
+  display: flex;
+  align-items: center;
+  gap: 1.5px;
+  height: 50%;
+}
+.orb-bars i {
+  width: 2px;
+  height: 100%;
+  border-radius: 1px;
+  background: #fff;
+  animation: bars 0.9s ease-in-out infinite;
+}
+.orb-bars i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.orb-bars i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+.orb-bars i:nth-child(4) {
+  animation-delay: -0.15s;
+}
+
+/* ---------- Waveform ---------- */
 
 .waveform {
   display: flex;
@@ -200,57 +314,35 @@ button {
   width: 3px;
   height: 100%;
   border-radius: 2px;
-  background: linear-gradient(180deg, #a4aef8 0%, #6b7be5 50%, #8b6fe0 100%);
+  background: rgba(122, 164, 255, 0.3);
+  box-shadow: 0 0 6px currentColor;
   transform-origin: center;
   transition: transform 70ms linear;
 }
 .waveform.idle span {
-  background: rgba(164, 174, 248, 0.35);
+  box-shadow: none;
 }
 .pill .waveform {
   height: 18px;
 }
 
-.rec-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #a48cf2;
-  box-shadow: 0 0 8px #8b6fe0;
+@keyframes bars {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
 }
-.spinner {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.25);
-  border-top-color: #fff;
-  animation: spin 0.7s linear infinite;
-}
-.icon {
-  display: inline-grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 700;
-  flex: none;
-}
-.icon.ok {
-  background: #30d158;
-  color: #fff;
-}
-.icon.warn {
-  background: #ff9f0a;
-  color: #1c1c1e;
-}
-.icon.info {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-@keyframes spin {
+@keyframes ripple {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
   to {
-    transform: rotate(360deg);
+    transform: scale(1.45);
+    opacity: 0;
   }
 }
 @keyframes rise {
@@ -261,12 +353,14 @@ button {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pill,
-  .card,
-  .spinner {
+  .glass,
+  .orb-bars i,
+  .orb.listening .orb-ring::after {
     animation: none;
   }
-  .waveform span {
+  .waveform span,
+  .orb-body,
+  .orb-ring {
     transition: none;
   }
 }
