@@ -54,6 +54,26 @@ Idle ─press─► Preparing ─mic open─► Recording ─release─► Trans
    keeps the session resident; switching models drops the old one first so two
    ~700 MB models never share RAM.
 
+### Long dictations: transcribing while you speak
+
+Batch inference after release would make release-to-text grow with the length
+of the dictation. Instead, once a stretch of recording passes **8 s**, the
+recorder cuts it at the next pause of **≥ 300 ms** (found from the per-frame
+VAD flags) and hands that piece to a background thread, which transcribes it
+while recording continues (`echolocal-core::segment`, `src-tauri/src/background.rs`).
+If someone talks for **20 s** without such a pause, the piece is cut at the
+longest silence in that span (or hard-cut at 20 s as a last resort). On
+release only the remaining tail is transcribed, and the piece transcripts are
+joined with the tail's.
+
+Because cuts fall inside silence, pieces never overlap and nothing has to be
+merged. The same idea as FluidVoice's incremental Parakeet session (fixed 15 s
+windows with 2 s overlap and token merging), simplified by the VAD flags
+EchoLocal already records. Dictations shorter than ~8 s, or with silence
+trimming turned off (no VAD), are transcribed in one pass as before. Each
+dictation logs how many pieces ran in the background and how long release
+waited for them.
+
 ### Memory: unloading when idle
 
 A loaded model holds roughly 0.7–1 GB. After a configurable idle period

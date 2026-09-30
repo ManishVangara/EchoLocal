@@ -7,24 +7,22 @@
 //! or post-processing goes through a shared flag instead, since the worker is
 //! busy at that point.
 
+use crate::background::{self, BackgroundTranscriber, TranscribeError};
 use crate::overlay::{self, Kind};
 use crate::state::{lock, notify_changed, AppState, EngineStatus};
 use crate::{ai, hotkey, tray};
-use echolocal_audio::Recording;
-use echolocal_core::audio::{pad_to_min_duration, samples_to_ms};
+use echolocal_audio::{Recording, RecordingCallbacks};
+use echolocal_core::audio::samples_to_ms;
 use echolocal_core::dictation::{decide, Decision, Phase, Trigger, MIN_RECORDING_MS};
 use echolocal_core::insertion::InsertionMethod;
 use echolocal_core::metrics::{since, DictationMetrics};
-use echolocal_core::text::normalize_transcript;
+use echolocal_core::text::{join_transcripts, normalize_transcript};
 use echolocal_core::PostProcessing;
-use echolocal_engine::EngineError;
 use echolocal_macos::{FocusTarget, InsertOptions};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
-/// Parakeet gets at least this much audio (short clips are padded).
-const MIN_MODEL_AUDIO_MS: u64 = 1000;
 const FLASH: Duration = Duration::from_millis(900);
 const FLASH_LONG: Duration = Duration::from_millis(2600);
 
@@ -79,6 +77,8 @@ impl Dictation {
 
 struct Active {
     recording: Recording,
+    /// Transcribes pieces of a long dictation while recording (needs VAD).
+    background: Option<BackgroundTranscriber>,
     target: FocusTarget,
     pressed_at: Instant,
 }
@@ -152,14 +152,24 @@ impl Worker {
             None
         };
         let app = self.app.clone();
-        let on_limit = Box::new(move || {
-            let dictation = app.state::<Dictation>();
-            dictation.trigger(&app, Trigger::HotkeyReleased);
+        let mut callbacks = RecordingCallbacks {
+            on_limit: Some(Box::new(move || {
+                let dictation = app.state::<Dictation>();
+                dictation.trigger(&app, Trigger::HotkeyReleased);
+            })),
+            on_segment: None,
+        };
+        // Pieces are cut at pauses, so this needs the VAD.
+        let background = vad.is_some().then(|| {
+            let (transcriber, on_segment) = BackgroundTranscriber::start(&self.app);
+            callbacks.on_segment = Some(on_segment);
+            transcriber
         });
-        match Recording::start(settings.microphone.as_deref(), vad, Some(on_limit)) {
+        match Recording::start(settings.microphone.as_deref(), vad, callbacks) {
             Ok(recording) => {
                 self.active = Some(Active {
                     recording,
+                    background,
                     target,
                     pressed_at,
                 });
@@ -191,6 +201,12 @@ impl Worker {
             if let Some(vad) = active.recording.cancel() {
                 *lock(&self.state().vad) = Some(vad);
             }
+            if let Some(background) = active.background {
+                // Abort a piece mid-transcription; the flag is reset when the
+                // next dictation starts.
+                self.state().cancel.cancel();
+                background.abandon();
+            }
             log::info!("Recording discarded");
         }
         overlay::hide(&self.app);
@@ -202,7 +218,9 @@ impl Worker {
             // Start failed; the phase was already reset.
             return;
         };
-        hotkey::set_cancel_enabled(&self.app, false);
+        // From here Esc aborts processing (Escape stays registered until
+        // `finish`), including background pieces still being transcribed.
+        self.set_phase(Phase::Transcribing);
         let mut metrics = DictationMetrics {
             mic_start_ms: active
                 .recording
@@ -227,19 +245,23 @@ impl Worker {
         metrics.audio_ms = audio.duration_ms();
         if held_ms < MIN_RECORDING_MS || audio.samples.is_empty() {
             log::info!("Ignoring {held_ms} ms tap");
+            if let Some(background) = active.background {
+                background.abandon();
+            }
             overlay::hide(&self.app);
             self.finish();
             return;
         }
-        let speech = audio.speech();
-        metrics.speech_ms = samples_to_ms(speech.len());
-        if speech.is_empty() {
-            overlay::flash(&self.app, Kind::Notice, "No speech detected", FLASH);
-            self.finish();
-            return;
-        }
+        let tail = audio.speech();
+        metrics.speech_ms = samples_to_ms(tail.len());
 
-        match self.process(&active.target, speech, released_at, &mut metrics) {
+        match self.process(
+            &active.target,
+            active.background,
+            tail,
+            released_at,
+            &mut metrics,
+        ) {
             Ok(Some(method)) => {
                 metrics.insertion_method = Some(method);
                 log::info!("Dictation: {}", metrics.summary());
@@ -257,51 +279,62 @@ impl Worker {
     fn process(
         &mut self,
         target: &FocusTarget,
-        speech: &[f32],
+        background: Option<BackgroundTranscriber>,
+        tail: &[f32],
         released_at: Instant,
         metrics: &mut DictationMetrics,
     ) -> Result<Option<InsertionMethod>, String> {
         let state = self.state();
         let settings = state.settings();
 
-        // Transcribe.
-        self.set_phase(Phase::Transcribing);
         overlay::show(&self.app, Kind::Transcribing, "Transcribing…");
-        let pcm = pad_to_min_duration(speech, MIN_MODEL_AUDIO_MS);
-        let wait_started = Instant::now();
-        let transcription = {
-            let mut engine = state.engine();
-            if engine.as_ref().map(|e| e.model_id()) != Some(settings.model) {
-                // Not loaded yet (first run, or loading failed): load now.
-                drop(engine);
-                if let Err(e) = crate::state::load_selected_model_now(&self.app) {
-                    log::error!("{e:#}");
-                    return Err("Speech model couldn't load".into());
+
+        // Pieces split off while recording; usually already done by now.
+        let pieces = match background {
+            Some(background) => {
+                let started = Instant::now();
+                let result = background.finish();
+                metrics.background_wait_ms = since(started);
+                match result {
+                    Ok(pieces) => pieces,
+                    Err(TranscribeError::Cancelled) => {
+                        overlay::hide(&self.app);
+                        return Ok(None);
+                    }
+                    Err(TranscribeError::Failed(message)) => return Err(message.into()),
                 }
-                engine = state.engine();
             }
-            let Some(engine) = engine.as_mut() else {
-                return Err("Speech model not ready".into());
-            };
-            metrics.model_wait_ms = since(wait_started);
-            let result = engine.transcribe(&pcm, &state.cancel);
-            state.touch_model();
-            result
+            None => background::Pieces::default(),
         };
-        let transcription = match transcription {
-            Ok(t) => t,
-            Err(EngineError::Cancelled) => {
-                overlay::hide(&self.app);
-                return Ok(None);
-            }
-            Err(EngineError::Failed(e)) => {
-                log::error!("Transcription failed: {e}");
-                return Err("Transcription failed".into());
+        metrics.background_pieces = pieces.texts.len() as u32;
+        metrics.background_speech_ms = pieces.speech_ms;
+
+        // The rest of the recording.
+        let tail_text = if tail.is_empty() {
+            String::new()
+        } else {
+            match background::transcribe_pcm(&self.app, tail) {
+                Ok((transcription, waited)) => {
+                    metrics.model_wait_ms = waited;
+                    metrics.inference_ms = transcription.inference_ms;
+                    log::debug!("Tail transcript language: {:?}", transcription.language);
+                    normalize_transcript(&transcription.text)
+                }
+                Err(TranscribeError::Cancelled) => {
+                    overlay::hide(&self.app);
+                    return Ok(None);
+                }
+                Err(TranscribeError::Failed(message)) => return Err(message.into()),
             }
         };
-        metrics.inference_ms = transcription.inference_ms;
-        let mut text = normalize_transcript(&transcription.text);
-        log::debug!("Transcript ({:?}): {text}", transcription.language);
+
+        let mut text = join_transcripts(
+            pieces
+                .texts
+                .iter()
+                .map(String::as_str)
+                .chain(std::iter::once(tail_text.as_str())),
+        );
         if text.is_empty() {
             overlay::flash(&self.app, Kind::Notice, "No speech detected", FLASH);
             return Ok(None);

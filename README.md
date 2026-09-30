@@ -11,6 +11,8 @@ no account, no cloud audio, no subscription.
 - **Batch, not streaming:** audio is buffered in memory while you hold the key
   and transcribed in one pass on release. Parakeet is fast enough that this
   feels instant, and it is far simpler and more reliable than streaming.
+- **Long dictations stay fast:** past ~8 seconds, finished parts are transcribed
+  at natural pauses while you keep talking, so release only waits for the last bit.
 - **Stays out of the way:** a menu-bar icon, a small "Listening" pill while
   you talk, and a settings window you rarely open.
 - **Optional AI cleanup:** *Clean* or *Rewrite* the transcript with any
@@ -98,6 +100,7 @@ bun run typecheck
 - [x] Phase 6: Raw / Clean / Rewrite post-processing
 - [ ] Phase 7: per-app profiles (e.g. Terminal → Raw, Mail → Clean)
 - [x] Free model memory when idle (default 15 min), reloading while you speak
+- [x] Background transcription of long dictations, cut at pauses
 - [ ] Modifier-only shortcuts (e.g. hold Right ⌥), API key in Keychain,
       receipt-based clipboard restore
 

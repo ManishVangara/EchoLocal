@@ -10,6 +10,7 @@ pub mod dictation;
 pub mod insertion;
 pub mod metrics;
 pub mod resample;
+pub mod segment;
 pub mod settings;
 pub mod text;
 

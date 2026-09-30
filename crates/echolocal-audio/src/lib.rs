@@ -4,7 +4,10 @@ mod recorder;
 #[cfg(feature = "silero")]
 mod silero;
 
-pub use recorder::{list_input_devices, LimitCallback, Recording, RecordingOutput};
+pub use recorder::{
+    list_input_devices, LimitCallback, Recording, RecordingCallbacks, RecordingOutput,
+    SegmentCallback,
+};
 
 use echolocal_core::audio::{EnergyVad, VoiceActivityDetector};
 use std::path::Path;

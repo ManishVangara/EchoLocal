@@ -6,6 +6,7 @@
 //! flags to trim leading and trailing silence in constant time, so VAD adds
 //! no release-to-text latency.
 
+use crate::segment::{find_cut, SegmentConfig};
 use std::ops::Range;
 
 /// Sample rate expected by Parakeet (and produced by the recorder).
@@ -87,6 +88,10 @@ pub struct RecordedAudio {
     /// One flag per complete [`VAD_FRAME_SAMPLES`] frame, or `None` when VAD
     /// was disabled or failed (the whole recording is then kept).
     pub speech_frames: Option<Vec<bool>>,
+    /// Samples before this index were already handed out as segments during
+    /// recording (see [`RecordingBuffer::next_segment`]). Always a multiple of
+    /// [`VAD_FRAME_SAMPLES`].
+    pub committed_samples: usize,
 }
 
 impl RecordedAudio {
@@ -94,15 +99,21 @@ impl RecordedAudio {
         samples_to_ms(self.samples.len())
     }
 
-    /// The samples to transcribe: trimmed to speech when flags exist.
-    /// Returns an empty slice when VAD found no speech at all.
+    /// The samples still to transcribe (everything after the segments already
+    /// handed out), trimmed to speech when flags exist. Empty when VAD found
+    /// no speech in that part.
     pub fn speech(&self) -> &[f32] {
+        let tail = &self.samples[self.committed_samples.min(self.samples.len())..];
         match &self.speech_frames {
-            None => &self.samples,
-            Some(flags) => match speech_range(flags, self.samples.len(), &TrimConfig::default()) {
-                Some(range) => &self.samples[range],
-                None => &[],
-            },
+            None => tail,
+            Some(flags) => {
+                let first_frame = self.committed_samples / VAD_FRAME_SAMPLES;
+                let tail_flags = flags.get(first_frame..).unwrap_or(&[]);
+                match speech_range(tail_flags, tail.len(), &TrimConfig::default()) {
+                    Some(range) => &tail[range],
+                    None => &[],
+                }
+            }
         }
     }
 }
@@ -112,6 +123,8 @@ pub struct RecordingBuffer {
     samples: Vec<f32>,
     speech_frames: Vec<bool>,
     vad: Option<Box<dyn VoiceActivityDetector>>,
+    segmentation: Option<SegmentConfig>,
+    committed_frames: usize,
 }
 
 impl RecordingBuffer {
@@ -124,6 +137,35 @@ impl RecordingBuffer {
             samples: Vec::with_capacity(SAMPLE_RATE as usize * 30),
             speech_frames: Vec::new(),
             vad,
+            segmentation: None,
+            committed_frames: 0,
+        }
+    }
+
+    /// Allow [`next_segment`](Self::next_segment) to split off finished
+    /// pieces of a long recording. Needs a VAD (cuts go in pauses).
+    pub fn with_segmentation(mut self, config: SegmentConfig) -> Self {
+        self.segmentation = Some(config);
+        self
+    }
+
+    /// The next finished piece of speech, trimmed, if one is ready. Pieces
+    /// are returned in order and never overlap; the rest of the recording is
+    /// available as [`RecordedAudio::speech`] after [`finish`](Self::finish).
+    /// Pieces that turn out to contain no speech are skipped.
+    pub fn next_segment(&mut self) -> Option<Vec<f32>> {
+        let config = self.segmentation.as_ref()?;
+        self.vad.as_ref()?;
+        loop {
+            let start = self.committed_frames;
+            let cut = find_cut(&self.speech_frames, start, config)?;
+            self.committed_frames = cut;
+            let flags = &self.speech_frames[start..cut];
+            let offset = start * VAD_FRAME_SAMPLES;
+            let len = (cut - start) * VAD_FRAME_SAMPLES;
+            if let Some(range) = speech_range(flags, len, &TrimConfig::default()) {
+                return Some(self.samples[offset + range.start..offset + range.end].to_vec());
+            }
         }
     }
 
@@ -163,9 +205,12 @@ impl RecordingBuffer {
     /// takes longer than a recording should wait for).
     pub fn into_parts(self) -> (RecordedAudio, Option<Box<dyn VoiceActivityDetector>>) {
         let speech_frames = self.vad.is_some().then_some(self.speech_frames);
+        // If VAD failed mid-recording the flags are gone; segments already
+        // handed out stay committed so their audio isn't transcribed twice.
         let audio = RecordedAudio {
             samples: self.samples,
             speech_frames,
+            committed_samples: self.committed_frames * VAD_FRAME_SAMPLES,
         };
         (audio, self.vad)
     }
@@ -374,6 +419,63 @@ mod tests {
         let audio = buf.finish();
         assert!(audio.speech_frames.is_none());
         assert_eq!(audio.speech().len(), ms_to_samples(300));
+    }
+
+    fn small_segments() -> SegmentConfig {
+        SegmentConfig {
+            min_segment_frames: 100, // 3 s
+            min_pause_frames: 10,    // 300 ms
+            max_segment_frames: 400, // 12 s
+        }
+    }
+
+    #[test]
+    fn long_recording_is_split_at_pauses() {
+        let mut buf = RecordingBuffer::new(Some(Box::new(EnergyVad::new())))
+            .with_segmentation(small_segments());
+        let mut audio = silence(500);
+        audio.extend(tone(4000, 0.3));
+        audio.extend(silence(600));
+        audio.extend(tone(3500, 0.3));
+        audio.extend(silence(600));
+        audio.extend(tone(1500, 0.3));
+        audio.extend(silence(400));
+
+        let mut segments = Vec::new();
+        for chunk in audio.chunks(1600) {
+            buf.push(chunk);
+            while let Some(segment) = buf.next_segment() {
+                segments.push(segment);
+            }
+        }
+        let recorded = buf.finish();
+        assert_eq!(segments.len(), 2, "two pieces split off during recording");
+        let lens: Vec<u64> = segments.iter().map(|s| samples_to_ms(s.len())).collect();
+        assert!((4000..=4900).contains(&lens[0]), "{lens:?}");
+        assert!((3500..=4400).contains(&lens[1]), "{lens:?}");
+        let tail = samples_to_ms(recorded.speech().len());
+        assert!((1500..=2400).contains(&tail), "tail {tail} ms");
+        assert_eq!(recorded.committed_samples % VAD_FRAME_SAMPLES, 0);
+    }
+
+    #[test]
+    fn short_recording_is_not_split() {
+        let mut buf = RecordingBuffer::new(Some(Box::new(EnergyVad::new())))
+            .with_segmentation(small_segments());
+        let mut audio = tone(2000, 0.3);
+        audio.extend(silence(800));
+        buf.push(&audio);
+        assert!(buf.next_segment().is_none());
+        let recorded = buf.finish();
+        assert_eq!(recorded.committed_samples, 0);
+        assert!(samples_to_ms(recorded.speech().len()) >= 2000);
+    }
+
+    #[test]
+    fn segmentation_needs_vad() {
+        let mut buf = RecordingBuffer::new(None).with_segmentation(small_segments());
+        buf.push(&tone(20_000, 0.3));
+        assert!(buf.next_segment().is_none());
     }
 
     #[test]

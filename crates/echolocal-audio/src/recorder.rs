@@ -12,6 +12,7 @@ use cpal::{FromSample, SampleFormat, SizedSample};
 use echolocal_core::audio::{RecordedAudio, RecordingBuffer, VoiceActivityDetector};
 use echolocal_core::dictation::MAX_RECORDING_MS;
 use echolocal_core::resample::StreamResampler;
+use echolocal_core::segment::SegmentConfig;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::sync::{Arc, OnceLock};
@@ -44,6 +45,19 @@ enum Command {
 /// [`MAX_RECORDING_MS`]; capture stops appending audio at that point.
 pub type LimitCallback = Box<dyn FnOnce() + Send>;
 
+/// Receives finished pieces of a long recording (16 kHz, trimmed to speech),
+/// in order, while recording continues. Called from the capture thread, so it
+/// must return quickly (e.g. send to a channel).
+pub type SegmentCallback = Box<dyn FnMut(Vec<f32>) + Send>;
+
+/// Optional notifications from an active recording.
+#[derive(Default)]
+pub struct RecordingCallbacks {
+    pub on_limit: Option<LimitCallback>,
+    /// Setting this enables splitting long recordings at pauses (needs VAD).
+    pub on_segment: Option<SegmentCallback>,
+}
+
 pub struct RecordingOutput {
     pub audio: RecordedAudio,
     /// The detector, returned for reuse by the next recording.
@@ -67,7 +81,7 @@ impl Recording {
     pub fn start(
         device_name: Option<&str>,
         vad: Option<Box<dyn VoiceActivityDetector>>,
-        on_limit: Option<LimitCallback>,
+        callbacks: RecordingCallbacks,
     ) -> anyhow::Result<Recording> {
         let started = Instant::now();
         let (commands, command_rx) = mpsc::channel();
@@ -82,7 +96,7 @@ impl Recording {
                 capture_thread(
                     device_name,
                     vad,
-                    on_limit,
+                    callbacks,
                     command_rx,
                     ready_tx,
                     first_audio_thread,
@@ -201,7 +215,7 @@ where
 fn capture_thread(
     device_name: Option<String>,
     vad: Option<Box<dyn VoiceActivityDetector>>,
-    on_limit: Option<LimitCallback>,
+    callbacks: RecordingCallbacks,
     commands: mpsc::Receiver<Command>,
     ready: mpsc::Sender<anyhow::Result<()>>,
     first_audio: Arc<OnceLock<Instant>>,
@@ -250,9 +264,15 @@ fn capture_thread(
     };
 
     let mut resampler = StreamResampler::new(rate)?;
+    let RecordingCallbacks {
+        mut on_limit,
+        mut on_segment,
+    } = callbacks;
     let mut buffer = RecordingBuffer::new(vad);
+    if on_segment.is_some() {
+        buffer = buffer.with_segmentation(SegmentConfig::default());
+    }
     let limit_samples = echolocal_core::audio::ms_to_samples(MAX_RECORDING_MS);
-    let mut on_limit = on_limit;
     let mut raw = Vec::with_capacity(rate as usize / 10);
     let mut converted = Vec::with_capacity(1600);
 
@@ -272,6 +292,11 @@ fn capture_thread(
         resampler.process(&raw, &mut converted)?;
         let room = limit_samples.saturating_sub(buffer.len());
         buffer.push(&converted[..converted.len().min(room)]);
+        if let Some(callback) = on_segment.as_mut() {
+            while let Some(segment) = buffer.next_segment() {
+                callback(segment);
+            }
+        }
         if converted.len() >= room {
             if let Some(callback) = on_limit.take() {
                 log::warn!("Recording reached the {} s limit", MAX_RECORDING_MS / 1000);

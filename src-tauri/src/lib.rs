@@ -6,6 +6,7 @@
 //! kept in separate crates; this crate wires them into a menu-bar app.
 
 mod ai;
+mod background;
 mod commands;
 mod dictation;
 mod hotkey;

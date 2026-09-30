@@ -29,6 +29,16 @@ pub fn join_with_preceding(preceding: Option<char>, text: &str) -> String {
     }
 }
 
+/// Join the transcripts of consecutive pieces of one dictation.
+pub fn join_transcripts<'a>(parts: impl IntoIterator<Item = &'a str>) -> String {
+    parts
+        .into_iter()
+        .map(str::trim)
+        .filter(|p| !p.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Length in UTF-16 code units, the unit macOS text APIs count in.
 pub fn utf16_len(text: &str) -> usize {
     text.encode_utf16().count()
@@ -60,6 +70,15 @@ mod tests {
         assert_eq!(join_with_preceding(Some('('), "aside"), "aside");
         assert_eq!(join_with_preceding(Some('d'), ", then"), ", then");
         assert_eq!(join_with_preceding(Some('\n'), "Line"), "Line");
+    }
+
+    #[test]
+    fn joins_pieces() {
+        assert_eq!(
+            join_transcripts(["First part.", " ", "second part", "Tail."]),
+            "First part. second part Tail."
+        );
+        assert_eq!(join_transcripts(Vec::<&str>::new()), "");
     }
 
     #[test]
