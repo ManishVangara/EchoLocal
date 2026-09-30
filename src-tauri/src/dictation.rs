@@ -162,7 +162,10 @@ impl Worker {
             })),
             on_segment: None,
             on_preview: None,
+            on_level: None,
         };
+        let level_app = self.app.clone();
+        callbacks.on_level = Some(Box::new(move |level| overlay::set_level(&level_app, level)));
         let pieces: SharedTexts = Default::default();
         // Pieces are cut at pauses, so this needs the VAD.
         let background = vad.is_some().then(|| {
@@ -186,6 +189,9 @@ impl Worker {
                 });
                 self.set_phase(Phase::Recording);
                 self.app.state::<Hotkeys>().set_cancel_enabled(true);
+                if let Some(active) = &self.active {
+                    overlay::set_context(&self.app, &active.target);
+                }
                 overlay::show(&self.app, Kind::Listening, "Listening");
                 log::info!(
                     "Recording (target: {}, mic open after {} ms)",

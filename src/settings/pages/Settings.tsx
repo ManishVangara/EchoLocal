@@ -1,10 +1,34 @@
 // The settings pages reachable from the sidebar.
 
-import type { ModelUnload, PostProcessing, Settings } from "../../api";
+import type { ModelUnload, OverlayPosition, OverlaySize, PostProcessing, Settings } from "../../api";
 import type { AppState } from "../useAppState";
 import { Group, PageHeader, Row, Segmented, Switch } from "../components/Controls";
 import { AiFields, MicrophoneSelect, ModelPicker, Permissions, ShortcutRecorder } from "../components/Features";
 import { LockIcon } from "../components/Icons";
+import { useEffect, useState } from "react";
+
+/** Saves when released, not on every step while dragging. */
+function OffsetSlider(props: { value: number; onCommit: (value: number) => void }) {
+  const [value, setValue] = useState(props.value);
+  useEffect(() => setValue(props.value), [props.value]);
+  const commit = () => value !== props.value && props.onCommit(value);
+  return (
+    <div className="slider">
+      <input
+        type="range"
+        min={0}
+        max={240}
+        step={4}
+        value={value}
+        onChange={(e) => setValue(Number(e.target.value))}
+        onPointerUp={commit}
+        onKeyUp={commit}
+        aria-label="Distance from edge"
+      />
+      <span>{value} pt</span>
+    </div>
+  );
+}
 
 function useUpdate(app: AppState) {
   return async (patch: Partial<Settings>) =>
@@ -124,6 +148,37 @@ export function GeneralPage({ app }: { app: AppState }) {
         </Row>
         <Row label="Microphone">
           <MicrophoneSelect value={settings.microphone} onChange={(microphone) => update({ microphone })} />
+        </Row>
+      </Group>
+      <Group title="Overlay" footer="The card shows the app you're dictating into, the live transcript and quick controls.">
+        <Row label="Size">
+          <Segmented<OverlaySize>
+            label="Overlay size"
+            value={settings.overlay_size}
+            options={[
+              ["pill", "Pill"],
+              ["card", "Card"],
+              ["large", "Large"],
+            ]}
+            onChange={(overlay_size) => update({ overlay_size })}
+          />
+        </Row>
+        <Row label="Position">
+          <Segmented<OverlayPosition>
+            label="Overlay position"
+            value={settings.overlay_position}
+            options={[
+              ["bottom", "Bottom"],
+              ["top", "Top"],
+            ]}
+            onChange={(overlay_position) => update({ overlay_position })}
+          />
+        </Row>
+        <Row
+          label="Distance from edge"
+          detail={settings.overlay_position === "bottom" ? "Above the Dock" : "Below the menu bar"}
+        >
+          <OffsetSlider value={settings.overlay_offset} onCommit={(overlay_offset) => update({ overlay_offset })} />
         </Row>
       </Group>
       <Group title="Permissions">

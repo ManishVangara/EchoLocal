@@ -9,94 +9,230 @@ body,
   user-select: none;
   cursor: default;
   font: 500 13px -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  color: #fafafa;
 }
 
-/* Content is anchored to the bottom of the (larger, transparent) window. */
-.stack {
+/* The window is sized to the card plus a small margin for its shadow. */
+.frame {
   height: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px 10px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.surface,
+.pill,
+.card {
+  background: rgba(22, 22, 24, 0.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32), 0 0 0 0.5px rgba(255, 255, 255, 0.16) inset;
+  animation: rise 0.16s ease-out;
+}
+
+/* ---------- Pill ---------- */
+
+.pill {
+  height: 40px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 0 14px;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.pill .message {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Card ---------- */
+
+.card {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-radius: 18px;
+  padding: 10px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px;
+}
+.target {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+}
+.target img {
+  flex: none;
+  border-radius: 4px;
+}
+.target-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+}
+.target-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.modes {
+  display: inline-flex;
+  padding: 2px;
+  gap: 2px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-right: 4px;
+}
+button {
+  font: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: default;
+}
+.modes button {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.65);
+}
+.modes button:hover {
+  color: #fff;
+}
+.modes button.active {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+.icon-button {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  color: rgba(255, 255, 255, 0.6);
+}
+.icon-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Newest words stay at the bottom; older lines slide off the top. */
+.transcript {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px 6px;
-  box-sizing: border-box;
-}
-
-.transcript {
-  max-width: 100%;
-  padding: 9px 14px;
-  border-radius: 14px;
-  background: rgba(28, 28, 30, 0.82);
-  color: rgba(255, 255, 255, 0.95);
-  font-weight: 400;
   font-size: 14px;
-  line-height: 1.4;
-  text-align: center;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25), 0 0 0 0.5px rgba(255, 255, 255, 0.12) inset;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  animation: rise 0.18s ease-out;
+  font-weight: 400;
+  line-height: 1.38;
+  color: rgba(255, 255, 255, 0.96);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 14px);
+}
+.large .transcript {
+  font-size: 15px;
+}
+.transcript.empty {
+  color: rgba(255, 255, 255, 0.4);
+  justify-content: center;
+  -webkit-mask-image: none;
+  mask-image: none;
 }
 
-.pill {
-  display: inline-flex;
+.card-bottom {
+  display: flex;
   align-items: center;
-  gap: 9px;
-  height: 34px;
-  padding: 0 16px 0 13px;
-  border-radius: 999px;
-  background: rgba(20, 20, 22, 0.9);
-  color: #fafafa;
-  white-space: nowrap;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 0 0 0 0.5px rgba(255, 255, 255, 0.15) inset;
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
-  animation: rise 0.18s ease-out;
+  justify-content: space-between;
+  gap: 12px;
+  height: 22px;
 }
-
-.message {
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.status .message {
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 420px;
 }
 
-.bars {
-  display: inline-flex;
+/* ---------- Waveform & indicators ---------- */
+
+.waveform {
+  display: flex;
   align-items: center;
-  gap: 2px;
-  height: 16px;
+  gap: 3px;
+  height: 20px;
 }
-.bars span {
+.waveform span {
   width: 3px;
   height: 100%;
   border-radius: 2px;
   background: #ff453a;
   transform-origin: center;
-  animation: bounce 0.9s ease-in-out infinite;
+  transition: transform 70ms linear;
+}
+.waveform.idle span {
+  background: rgba(255, 255, 255, 0.3);
+}
+.pill .waveform {
+  height: 18px;
 }
 
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff453a;
+}
 .spinner {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-top-color: #fff;
   animation: spin 0.7s linear infinite;
 }
-
 .icon {
   display: inline-grid;
   place-items: center;
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
+  flex: none;
 }
 .icon.ok {
   background: #30d158;
@@ -110,22 +246,11 @@ body,
   background: rgba(255, 255, 255, 0.25);
 }
 
-@keyframes bounce {
-  0%,
-  100% {
-    transform: scaleY(0.3);
-  }
-  50% {
-    transform: scaleY(1);
-  }
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
-
 @keyframes rise {
   from {
     opacity: 0;
@@ -134,13 +259,12 @@ body,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bars span,
-  .spinner,
   .pill,
-  .transcript {
+  .card,
+  .spinner {
     animation: none;
   }
-  .bars span {
-    transform: scaleY(0.7);
+  .waveform span {
+    transition: none;
   }
 }

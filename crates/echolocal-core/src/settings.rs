@@ -50,6 +50,44 @@ impl ModelUnload {
     }
 }
 
+/// How much the floating overlay shows while dictating.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlaySize {
+    /// Just the waveform and status.
+    Pill,
+    /// Card with the live transcript, target app and controls.
+    #[default]
+    Card,
+    /// A wider card with more transcript lines.
+    Large,
+}
+
+impl OverlaySize {
+    /// Window size in points, including a small margin for the shadow.
+    pub fn window_size(self) -> (f64, f64) {
+        match self {
+            OverlaySize::Pill => (220.0, 64.0),
+            OverlaySize::Card => (460.0, 156.0),
+            OverlaySize::Large => (620.0, 204.0),
+        }
+    }
+
+    /// Whether the overlay has clickable controls (and so accepts clicks).
+    pub fn is_interactive(self) -> bool {
+        self != OverlaySize::Pill
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OverlayPosition {
+    #[default]
+    Bottom,
+    /// Just below the menu bar (and the notch, on MacBooks that have one).
+    Top,
+}
+
 /// Connection details for an OpenAI-compatible chat completions endpoint.
 /// Works with local servers (Ollama, LM Studio, llama.cpp) and hosted APIs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,11 +137,18 @@ pub struct Settings {
     pub trim_silence: bool,
     /// Show what is being heard in the overlay while recording.
     pub live_preview: bool,
+    pub overlay_size: OverlaySize,
+    pub overlay_position: OverlayPosition,
+    /// Distance from the bottom of the usable screen area (or the menu bar,
+    /// for [`OverlayPosition::Top`]), in points.
+    pub overlay_offset: u32,
     /// Free the model's memory after this much inactivity.
     pub unload_model: ModelUnload,
     /// Input device name; `None` uses the system default microphone.
     pub microphone: Option<String>,
 }
+
+pub const DEFAULT_OVERLAY_OFFSET: u32 = 48;
 
 /// Hold the right ⌥ key. It types nothing on its own, so it doesn't collide
 /// with other apps' shortcuts.
@@ -119,6 +164,9 @@ impl Default for Settings {
             launch_at_login: false,
             trim_silence: true,
             live_preview: true,
+            overlay_size: OverlaySize::default(),
+            overlay_position: OverlayPosition::default(),
+            overlay_offset: DEFAULT_OVERLAY_OFFSET,
             unload_model: ModelUnload::default(),
             microphone: None,
         }
@@ -205,6 +253,21 @@ mod tests {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, "{not json").unwrap();
         assert_eq!(Settings::load(&path), Settings::default());
+    }
+
+    #[test]
+    fn overlay_defaults_and_sizes() {
+        let s = Settings::default();
+        assert_eq!(s.overlay_size, OverlaySize::Card);
+        assert_eq!(s.overlay_position, OverlayPosition::Bottom);
+        assert!(OverlaySize::Card.is_interactive());
+        assert!(!OverlaySize::Pill.is_interactive());
+        let (pw, _) = OverlaySize::Pill.window_size();
+        let (cw, _) = OverlaySize::Card.window_size();
+        let (lw, _) = OverlaySize::Large.window_size();
+        assert!(pw < cw && cw < lw);
+        let json = serde_json::to_string(&OverlaySize::Large).unwrap();
+        assert_eq!(json, "\"large\"");
     }
 
     #[test]

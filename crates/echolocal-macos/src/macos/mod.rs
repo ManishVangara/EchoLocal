@@ -12,7 +12,7 @@ use echolocal_core::insertion::{self, FieldSnapshot, InsertionMethod, Landed, Ta
 use echolocal_core::text::{join_with_preceding, utf16_len};
 use std::time::{Duration, Instant};
 
-pub use apps::{activate, frontmost_pid};
+pub use apps::{activate, frontmost_pid, icon_png};
 pub use ax::{is_trusted as accessibility_trusted, request_trust as request_accessibility};
 
 /// Platform half of [`FocusTarget`].

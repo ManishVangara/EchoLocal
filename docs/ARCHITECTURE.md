@@ -113,10 +113,17 @@ catalog edit.
   granted. Recording a new shortcut listens to the real keyboard
   (`echolocal_core::shortcut::ShortcutCapture`), with the current shortcut
   paused meanwhile.
-- **Overlay** (`src-tauri/src/overlay.rs`): a non-activating `NSPanel`
-  (`tauri-nspanel`) at status-bar level, on all Spaces and over full-screen
-  apps, ignoring the mouse, shown with `orderFrontRegardless` from the main
-  thread. It never takes focus from the app being dictated into.
+- **Overlay** (`src-tauri/src/overlay.rs`, `src/overlay/`): a non-activating
+  `NSPanel` (`tauri-nspanel`) at status-bar level, on all Spaces and over
+  full-screen apps, so it never takes focus from the app being dictated into.
+  As in FluidVoice it is never ordered out: "hidden" means transparent,
+  click-through and parked off-screen, so showing it is only a position and
+  alpha change. It comes in three sizes: a **pill** (waveform + status,
+  click-through) and a **card** / **large card** showing the target app's icon
+  and name, the live transcript (newest words at the bottom), a waveform
+  driven by the real microphone level (sent every 50 ms), and controls:
+  Raw / Clean / Rewrite (applies to the dictation in progress), settings and
+  cancel. Position (bottom or top) and distance from the edge are settings.
 
 ## Controlling the computer (macOS)
 

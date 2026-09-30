@@ -22,6 +22,12 @@ pub fn samples_to_ms(samples: usize) -> u64 {
     samples as u64 * 1000 / SAMPLE_RATE as u64
 }
 
+/// Loudness of a chunk mapped to 0.0–1.0 for a level meter: -55 dBFS
+/// (room noise) and below is 0, -10 dBFS (loud speech) and above is 1.
+pub fn meter_level(samples: &[f32]) -> f32 {
+    ((rms_db(samples) + 55.0) / 45.0).clamp(0.0, 1.0)
+}
+
 /// A frame-level speech classifier.
 pub trait VoiceActivityDetector: Send {
     /// Classify one frame of exactly [`VAD_FRAME_SAMPLES`] samples.
@@ -520,6 +526,16 @@ mod tests {
             pad_to_min_duration(&silence(1200), 1000).len(),
             ms_to_samples(1200)
         );
+    }
+
+    #[test]
+    fn meter_levels() {
+        assert_eq!(meter_level(&silence(30)), 0.0);
+        assert_eq!(meter_level(&[]), 0.0);
+        let loud = meter_level(&tone(30, 0.9));
+        let soft = meter_level(&tone(30, 0.02));
+        assert!(loud > 0.9, "{loud}");
+        assert!(soft > 0.0 && soft < 0.6, "{soft}");
     }
 
     #[test]

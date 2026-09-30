@@ -57,6 +57,12 @@ pub type PreviewCallback = Box<dyn FnMut(&[f32]) + Send>;
 
 pub const PREVIEW_INTERVAL: Duration = Duration::from_millis(500);
 
+/// Receives the microphone level (0.0–1.0, see
+/// [`echolocal_core::audio::meter_level`]) about every [`LEVEL_INTERVAL`].
+pub type LevelCallback = Box<dyn FnMut(f32) + Send>;
+
+pub const LEVEL_INTERVAL: Duration = Duration::from_millis(50);
+
 /// Optional notifications from an active recording.
 #[derive(Default)]
 pub struct RecordingCallbacks {
@@ -64,6 +70,7 @@ pub struct RecordingCallbacks {
     /// Setting this enables splitting long recordings at pauses (needs VAD).
     pub on_segment: Option<SegmentCallback>,
     pub on_preview: Option<PreviewCallback>,
+    pub on_level: Option<LevelCallback>,
 }
 
 pub struct RecordingOutput {
@@ -276,7 +283,10 @@ fn capture_thread(
         mut on_limit,
         mut on_segment,
         mut on_preview,
+        mut on_level,
     } = callbacks;
+    let mut last_level = Instant::now();
+    let mut peak_level = 0.0f32;
     let mut last_preview = Instant::now();
     let mut last_preview_len = 0usize;
     let mut buffer = RecordingBuffer::new(vad);
@@ -299,6 +309,15 @@ fn capture_thread(
             return Ok(());
         }
         first_audio.get_or_init(Instant::now);
+        if let Some(callback) = on_level.as_mut() {
+            // Report the loudest chunk of each interval so short syllables show.
+            peak_level = peak_level.max(echolocal_core::audio::meter_level(&raw));
+            if last_level.elapsed() >= LEVEL_INTERVAL {
+                last_level = Instant::now();
+                callback(peak_level);
+                peak_level = 0.0;
+            }
+        }
         converted.clear();
         resampler.process(&raw, &mut converted)?;
         let room = limit_samples.saturating_sub(buffer.len());

@@ -794,3 +794,23 @@ kbd {
 .onboarding-footer button {
   min-width: 96px;
 }
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: 12px;
+}
+.slider input {
+  width: 160px;
+  padding: 0;
+  border: none;
+  background: none;
+  accent-color: var(--accent);
+}
+.slider span {
+  min-width: 42px;
+  text-align: right;
+}

@@ -6,6 +6,8 @@ export type ModelId = "parakeet-tdt-v2" | "parakeet-tdt-v3";
 export type PostProcessing = "off" | "clean" | "rewrite";
 export type ModelUnload = "never" | "after5_minutes" | "after15_minutes" | "after1_hour";
 export type Phase = "idle" | "preparing" | "recording" | "transcribing" | "post_processing" | "inserting";
+export type OverlaySize = "pill" | "card" | "large";
+export type OverlayPosition = "bottom" | "top";
 export type Permission = "granted" | "denied" | "not_determined" | "unknown";
 
 export interface AiSettings {
@@ -23,6 +25,9 @@ export interface Settings {
   launch_at_login: boolean;
   trim_silence: boolean;
   live_preview: boolean;
+  overlay_size: OverlaySize;
+  overlay_position: OverlayPosition;
+  overlay_offset: number;
   unload_model: ModelUnload;
   microphone: string | null;
 }

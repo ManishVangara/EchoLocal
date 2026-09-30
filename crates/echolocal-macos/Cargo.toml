@@ -15,7 +15,7 @@ serde.workspace = true
 core-foundation = "0.10"
 core-graphics = { version = "0.24", features = ["elcapitan"] }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", features = ["NSString", "NSData", "NSArray"] }
+objc2-foundation = { version = "0.3", features = ["NSString", "NSData", "NSArray", "NSDictionary"] }
 objc2-av-foundation = { version = "0.3", default-features = false, features = ["std", "AVCaptureDevice", "AVMediaFormat", "block2"] }
 block2 = "0.6"
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "libc", "NSPasteboard", "NSPasteboardItem", "NSRunningApplication", "NSWorkspace"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "libc", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSPasteboard", "NSPasteboardItem", "NSRunningApplication", "NSWorkspace"] }

@@ -126,6 +126,33 @@ pub fn stop_shortcut_capture(app: AppHandle) {
     hotkey::stop_capture(&app);
 }
 
+/// Switch Raw / Clean / Rewrite from the overlay. Applies to the dictation
+/// in progress (post-processing reads the setting on release).
+#[tauri::command]
+pub fn overlay_set_mode(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    mode: PostProcessing,
+) -> Result<(), String> {
+    let mut settings = state.settings();
+    settings.post_processing = mode;
+    state.save_settings(settings).map_err(|e| e.to_string())?;
+    state::notify_changed(&app);
+    Ok(())
+}
+
+/// The overlay's ✕ button: same as pressing Esc.
+#[tauri::command]
+pub fn overlay_cancel(app: AppHandle) {
+    let dictation = app.state::<crate::dictation::Dictation>();
+    dictation.trigger(&app, echolocal_core::dictation::Trigger::Cancel);
+}
+
+#[tauri::command]
+pub fn overlay_open_settings(app: AppHandle) {
+    crate::show_settings(&app);
+}
+
 #[tauri::command]
 pub fn open_microphone_settings() {
     echolocal_macos::open_microphone_settings();

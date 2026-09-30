@@ -16,4 +16,6 @@ pub mod shortcut;
 pub mod text;
 
 pub use catalog::{ModelId, ModelSpec};
-pub use settings::{AiSettings, ModelUnload, PostProcessing, Settings};
+pub use settings::{
+    AiSettings, ModelUnload, OverlayPosition, OverlaySize, PostProcessing, Settings,
+};

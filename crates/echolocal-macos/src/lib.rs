@@ -8,6 +8,7 @@
 use echolocal_core::insertion::{InsertionMethod, Landed, TargetInfo};
 use std::time::Duration;
 
+mod icon;
 #[cfg(target_os = "macos")]
 mod macos;
 mod utf16;
@@ -55,6 +56,18 @@ pub enum Permission {
     /// The user hasn't been asked yet.
     NotDetermined,
     Unknown,
+}
+
+/// PNG icon of the app with this process id (for showing the dictation
+/// target), at least `min_px` pixels wide when available.
+pub fn app_icon_png(pid: i32, min_px: u32) -> Option<Vec<u8>> {
+    #[cfg(target_os = "macos")]
+    return macos::icon_png(pid, min_px as isize);
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (pid, min_px);
+        None
+    }
 }
 
 /// Microphone permission.

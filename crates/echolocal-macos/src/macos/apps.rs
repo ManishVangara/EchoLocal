@@ -1,6 +1,10 @@
 //! Running-application queries.
 
-use objc2_app_kit::{NSApplicationActivationOptions, NSRunningApplication, NSWorkspace};
+use objc2_app_kit::{
+    NSApplicationActivationOptions, NSBitmapImageFileType, NSBitmapImageRep, NSRunningApplication,
+    NSWorkspace,
+};
+use objc2_foundation::NSDictionary;
 use std::time::{Duration, Instant};
 
 pub fn bundle_id(pid: i32) -> Option<String> {
@@ -40,4 +44,21 @@ pub fn activate(pid: i32, timeout: Duration) -> bool {
         std::thread::sleep(Duration::from_millis(10));
     }
     false
+}
+
+/// The app's icon as PNG, using the smallest bitmap at least `min_px` wide.
+pub fn icon_png(pid: i32, min_px: isize) -> Option<Vec<u8>> {
+    let app = NSRunningApplication::runningApplicationWithProcessIdentifier(pid)?;
+    let tiff = app.icon()?.TIFFRepresentation()?;
+    let reps = NSBitmapImageRep::imageRepsWithData(&tiff);
+    let bitmaps: Vec<_> = reps
+        .iter()
+        .filter_map(|rep| rep.downcast::<NSBitmapImageRep>().ok())
+        .collect();
+    let widths: Vec<isize> = bitmaps.iter().map(|b| b.pixelsWide()).collect();
+    let bitmap = &bitmaps[crate::icon::pick_size(&widths, min_px)?];
+    let png = unsafe {
+        bitmap.representationUsingType_properties(NSBitmapImageFileType::PNG, &NSDictionary::new())
+    }?;
+    Some(png.to_vec())
 }

@@ -133,6 +133,9 @@ pub fn run() {
             commands::request_microphone,
             commands::start_shortcut_capture,
             commands::stop_shortcut_capture,
+            commands::overlay_set_mode,
+            commands::overlay_cancel,
+            commands::overlay_open_settings,
             commands::test_ai,
         ])
         .run(tauri::generate_context!())

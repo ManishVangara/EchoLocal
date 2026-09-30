@@ -13,8 +13,9 @@ no account, no cloud audio, no subscription.
   feels instant, and it is far simpler and more reliable than streaming.
 - **Long dictations stay fast:** past ~8 seconds, finished parts are transcribed
   at natural pauses while you keep talking, so release only waits for the last bit.
-- **See it as you speak:** a small floating pill shows that EchoLocal is
-  listening, with a live transcript of what it hears so far.
+- **See it as you speak:** a floating card shows the app you're dictating
+  into, a live waveform and transcript, and quick controls (Raw / Clean /
+  Rewrite, cancel). Or pick a minimal pill, at the bottom or top of the screen.
 - **Any shortcut:** hold a single key like Right ⌥ or fn, or use a combination
   such as ⌃⌥Space.
 - **Stays out of the way:** lives in the menu bar; a settings window you rarely
@@ -112,7 +113,8 @@ bun run typecheck
 - [x] Background transcription of long dictations, cut at pauses
 - [x] Live transcript while speaking, modifier-only shortcuts (hold Right ⌥)
 - [x] Standalone app install, release workflow (see docs/DISTRIBUTION.md)
-- [ ] Settings on the overlay itself, API key in Keychain, receipt-based
+- [x] Overlay card with target app, live waveform and controls; size and position settings
+- [ ] API key in Keychain, receipt-based
       clipboard restore, auto-updates
 
 ## License
