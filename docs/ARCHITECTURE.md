@@ -54,6 +54,16 @@ Idle ─press─► Preparing ─mic open─► Recording ─release─► Trans
    keeps the session resident; switching models drops the old one first so two
    ~700 MB models never share RAM.
 
+### Memory: unloading when idle
+
+A loaded model holds roughly 0.7–1 GB. After a configurable idle period
+(default 15 minutes; 5 min, 1 h or never) a background check frees it, but
+only when no dictation is running and nothing holds the engine. When the hotkey
+next goes down, the reload starts **immediately, in parallel with recording**;
+transcription waits on the engine lock only for whatever load time is left
+after the user finishes speaking. That remainder is logged per dictation as
+`model wait`, which makes the real cost of unloading measurable on each Mac.
+
 ### Models
 
 `echolocal-core::catalog` pins exactly two artifacts (Hugging Face repo,

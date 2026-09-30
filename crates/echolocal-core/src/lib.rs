@@ -14,4 +14,4 @@ pub mod settings;
 pub mod text;
 
 pub use catalog::{ModelId, ModelSpec};
-pub use settings::{AiSettings, PostProcessing, Settings};
+pub use settings::{AiSettings, ModelUnload, PostProcessing, Settings};

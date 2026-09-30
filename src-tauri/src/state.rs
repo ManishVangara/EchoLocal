@@ -9,7 +9,8 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, TryLockError};
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Emitted whenever something the settings window shows has changed; the
@@ -21,9 +22,21 @@ pub const DOWNLOAD_PROGRESS_EVENT: &str = "download-progress";
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum EngineStatus {
     NoModel,
-    Loading { model: ModelId },
-    Ready { model: ModelId },
-    Failed { model: ModelId, error: String },
+    Loading {
+        model: ModelId,
+    },
+    Ready {
+        model: ModelId,
+    },
+    /// Downloaded but not in memory (freed after being idle); it reloads
+    /// automatically when the next dictation starts.
+    Unloaded {
+        model: ModelId,
+    },
+    Failed {
+        model: ModelId,
+        error: String,
+    },
 }
 
 pub struct AppState {
@@ -32,6 +45,8 @@ pub struct AppState {
     pub store: ModelStore,
     engine: Mutex<Option<Box<dyn TranscriptionEngine>>>,
     engine_status: Mutex<EngineStatus>,
+    /// When the model was last loaded or used, for idle unloading.
+    last_model_use: Mutex<Instant>,
     pub cancel: CancelFlag,
     phase: Mutex<Phase>,
     downloads: Mutex<HashMap<ModelId, Arc<AtomicBool>>>,
@@ -56,6 +71,7 @@ impl AppState {
             store: ModelStore::new(models_dir),
             engine: Mutex::new(None),
             engine_status: Mutex::new(EngineStatus::NoModel),
+            last_model_use: Mutex::new(Instant::now()),
             cancel: CancelFlag::default(),
             phase: Mutex::new(Phase::Idle),
             downloads: Mutex::new(HashMap::new()),
@@ -100,6 +116,11 @@ impl AppState {
 
     pub fn engine(&self) -> MutexGuard<'_, Option<Box<dyn TranscriptionEngine>>> {
         lock(&self.engine)
+    }
+
+    /// Record that the model was just used, resetting the idle timer.
+    pub fn touch_model(&self) {
+        *lock(&self.last_model_use) = Instant::now();
     }
 
     pub fn is_downloading(&self, id: ModelId) -> bool {
@@ -191,6 +212,7 @@ pub fn load_selected_model_now(app: &AppHandle) -> anyhow::Result<()> {
         Ok(loaded) => {
             *engine = Some(loaded);
             drop(engine);
+            state.touch_model();
             set_engine_status(app, EngineStatus::Ready { model });
             Ok(())
         }
@@ -206,6 +228,44 @@ pub fn load_selected_model_now(app: &AppHandle) -> anyhow::Result<()> {
             Err(e)
         }
     }
+}
+
+/// Free the model if it has been idle longer than the user's setting.
+/// Never waits: if a dictation or a load holds the engine, it is in use.
+pub fn unload_if_idle(app: &AppHandle) {
+    let state = app.state::<AppState>();
+    let idle = lock(&state.last_model_use).elapsed();
+    if !state.phase().is_idle() || !state.settings().unload_model.should_unload(idle) {
+        return;
+    }
+    let mut engine = match state.engine.try_lock() {
+        Ok(guard) => guard,
+        Err(TryLockError::Poisoned(e)) => e.into_inner(),
+        Err(TryLockError::WouldBlock) => return,
+    };
+    let Some(model) = engine.as_ref().map(|e| e.model_id()) else {
+        return;
+    };
+    *engine = None;
+    drop(engine);
+    log::info!(
+        "Unloaded {} after {} min idle",
+        model.spec().display_name,
+        idle.as_secs() / 60
+    );
+    set_engine_status(app, EngineStatus::Unloaded { model });
+}
+
+/// Check for idle models periodically for the lifetime of the app.
+pub fn start_idle_unloader(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::Builder::new()
+        .name("echolocal-idle-unload".into())
+        .spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(30));
+            unload_if_idle(&app);
+        })
+        .expect("failed to start idle unloader");
 }
 
 #[derive(Clone, Serialize)]

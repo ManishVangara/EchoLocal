@@ -16,6 +16,8 @@ pub struct DictationMetrics {
     pub audio_ms: u64,
     /// Length of audio passed to the model after silence trimming.
     pub speech_ms: u64,
+    /// Time spent waiting for the model to (re)load after an idle unload.
+    pub model_wait_ms: u64,
     pub inference_ms: u64,
     pub post_processing_ms: Option<u64>,
     pub insertion_ms: u64,
@@ -31,8 +33,9 @@ impl DictationMetrics {
 
     pub fn summary(&self) -> String {
         format!(
-            "release→text {} ms (inference {} ms for {} ms speech, RTF {}, post {} ms, insert {} ms via {:?}); recorded {} ms; mic start {} ms",
+            "release→text {} ms (model wait {} ms, inference {} ms for {} ms speech, RTF {}, post {} ms, insert {} ms via {:?}); recorded {} ms; mic start {} ms",
             self.release_to_text_ms,
+            self.model_wait_ms,
             self.inference_ms,
             self.speech_ms,
             self.real_time_factor().map_or("n/a".into(), |r| format!("{r:.3}")),

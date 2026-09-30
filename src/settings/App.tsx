@@ -5,6 +5,7 @@ import {
   type AiSettings,
   type DownloadProgress,
   type ModelId,
+  type ModelUnload,
   type ModelView,
   type PostProcessing,
   type Settings,
@@ -137,6 +138,21 @@ export default function App() {
           checked={settings.trim_silence}
           onChange={(trim_silence) => update({ trim_silence })}
         />
+        <label className="toggle">
+          <span>
+            Free model memory when idle
+            <span className="small block">Reloads automatically while you speak</span>
+          </span>
+          <select
+            value={settings.unload_model}
+            onChange={(e) => update({ unload_model: e.target.value as ModelUnload })}
+          >
+            <option value="after5_minutes">After 5 minutes</option>
+            <option value="after15_minutes">After 15 minutes</option>
+            <option value="after1_hour">After 1 hour</option>
+            <option value="never">Never</option>
+          </select>
+        </label>
         <MicrophoneField value={settings.microphone} onChange={(microphone) => update({ microphone })} />
       </section>
 
@@ -156,6 +172,9 @@ function StatusLine({ snapshot }: { snapshot: Snapshot }) {
   switch (engine.status) {
     case "ready":
       text = `Ready — ${hint}`;
+      break;
+    case "unloaded":
+      text = `Ready — ${hint} (model reloads as you speak)`;
       break;
     case "loading":
       text = "Loading speech model…";

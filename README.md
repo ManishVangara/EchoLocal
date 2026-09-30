@@ -97,8 +97,9 @@ bun run typecheck
 - [x] Phase 5: minimal listening / transcribing / inserted feedback
 - [x] Phase 6: Raw / Clean / Rewrite post-processing
 - [ ] Phase 7: per-app profiles (e.g. Terminal → Raw, Mail → Clean)
-- [ ] Modifier-only shortcuts (e.g. hold Right ⌥), unload model after idle timeout,
-      API key in Keychain, receipt-based clipboard restore
+- [x] Free model memory when idle (default 15 min), reloading while you speak
+- [ ] Modifier-only shortcuts (e.g. hold Right ⌥), API key in Keychain,
+      receipt-based clipboard restore
 
 ## License
 

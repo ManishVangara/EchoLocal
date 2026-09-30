@@ -66,6 +66,7 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
 
     // Keep the selected model resident: repeat dictations skip loading.
     state::load_selected_model(&handle);
+    state::start_idle_unloader(&handle);
 
     // Warm the VAD in the background so the first recording doesn't pay for it.
     let vad_handle = handle.clone();

@@ -20,6 +20,36 @@ pub enum PostProcessing {
     Rewrite,
 }
 
+/// When to free the speech model's memory (~0.7–1 GB) after the last use.
+/// The model reloads while the next recording is in progress, so an unload
+/// mostly costs nothing unless the next utterance is very short.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ModelUnload {
+    Never,
+    After5Minutes,
+    #[default]
+    After15Minutes,
+    After1Hour,
+}
+
+impl ModelUnload {
+    pub fn timeout(self) -> Option<std::time::Duration> {
+        let minutes = match self {
+            ModelUnload::Never => return None,
+            ModelUnload::After5Minutes => 5,
+            ModelUnload::After15Minutes => 15,
+            ModelUnload::After1Hour => 60,
+        };
+        Some(std::time::Duration::from_secs(minutes * 60))
+    }
+
+    /// Whether a model idle for `idle` should be unloaded now.
+    pub fn should_unload(self, idle: std::time::Duration) -> bool {
+        self.timeout().is_some_and(|timeout| idle >= timeout)
+    }
+}
+
 /// Connection details for an OpenAI-compatible chat completions endpoint.
 /// Works with local servers (Ollama, LM Studio, llama.cpp) and hosted APIs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +96,8 @@ pub struct Settings {
     pub launch_at_login: bool,
     /// Trim leading and trailing silence with voice activity detection.
     pub trim_silence: bool,
+    /// Free the model's memory after this much inactivity.
+    pub unload_model: ModelUnload,
     /// Input device name; `None` uses the system default microphone.
     pub microphone: Option<String>,
 }
@@ -81,6 +113,7 @@ impl Default for Settings {
             ai: AiSettings::default(),
             launch_at_login: false,
             trim_silence: true,
+            unload_model: ModelUnload::default(),
             microphone: None,
         }
     }
@@ -166,6 +199,21 @@ mod tests {
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(&path, "{not json").unwrap();
         assert_eq!(Settings::load(&path), Settings::default());
+    }
+
+    #[test]
+    fn unload_policy() {
+        use std::time::Duration;
+        let min = |m: u64| Duration::from_secs(m * 60);
+        assert!(!ModelUnload::Never.should_unload(min(10_000)));
+        assert!(!ModelUnload::After15Minutes.should_unload(min(14)));
+        assert!(ModelUnload::After15Minutes.should_unload(min(15)));
+        assert!(ModelUnload::After5Minutes.should_unload(min(6)));
+        assert!(!ModelUnload::After1Hour.should_unload(min(59)));
+        assert_eq!(
+            serde_json::to_string(&ModelUnload::After15Minutes).unwrap(),
+            "\"after15_minutes\""
+        );
     }
 
     #[test]

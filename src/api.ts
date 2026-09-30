@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type ModelId = "parakeet-tdt-v2" | "parakeet-tdt-v3";
 export type PostProcessing = "off" | "clean" | "rewrite";
+export type ModelUnload = "never" | "after5_minutes" | "after15_minutes" | "after1_hour";
 export type Phase = "idle" | "preparing" | "recording" | "transcribing" | "post_processing" | "inserting";
 
 export interface AiSettings {
@@ -20,6 +21,7 @@ export interface Settings {
   ai: AiSettings;
   launch_at_login: boolean;
   trim_silence: boolean;
+  unload_model: ModelUnload;
   microphone: string | null;
 }
 
@@ -39,6 +41,7 @@ export type EngineStatus =
   | { status: "no_model" }
   | { status: "loading"; model: ModelId }
   | { status: "ready"; model: ModelId }
+  | { status: "unloaded"; model: ModelId }
   | { status: "failed"; model: ModelId; error: string };
 
 export interface Snapshot {

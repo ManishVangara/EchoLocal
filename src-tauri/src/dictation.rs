@@ -125,9 +125,7 @@ impl Worker {
             .app
             .run_on_main_thread(echolocal_macos::refresh_keyboard_layout);
 
-        let can_transcribe = state.store.is_downloaded(settings.model)
-            || matches!(state.engine_status(), EngineStatus::Ready { .. });
-        if !can_transcribe {
+        if !state.store.is_downloaded(settings.model) {
             overlay::flash(
                 &self.app,
                 Kind::Error,
@@ -137,6 +135,13 @@ impl Worker {
             crate::show_settings(&self.app);
             self.finish();
             return;
+        }
+        // If the model was unloaded while idle, reload it now so loading
+        // overlaps with the user speaking; transcription waits for it.
+        if !matches!(state.engine_status(), EngineStatus::Ready { model } if model == settings.model)
+            && !matches!(state.engine_status(), EngineStatus::Loading { .. })
+        {
+            crate::state::load_selected_model(&self.app);
         }
 
         let vad = if settings.trim_silence {
@@ -263,6 +268,7 @@ impl Worker {
         self.set_phase(Phase::Transcribing);
         overlay::show(&self.app, Kind::Transcribing, "Transcribing…");
         let pcm = pad_to_min_duration(speech, MIN_MODEL_AUDIO_MS);
+        let wait_started = Instant::now();
         let transcription = {
             let mut engine = state.engine();
             if engine.as_ref().map(|e| e.model_id()) != Some(settings.model) {
@@ -277,7 +283,10 @@ impl Worker {
             let Some(engine) = engine.as_mut() else {
                 return Err("Speech model not ready".into());
             };
-            engine.transcribe(&pcm, &state.cancel)
+            metrics.model_wait_ms = since(wait_started);
+            let result = engine.transcribe(&pcm, &state.cancel);
+            state.touch_model();
+            result
         };
         let transcription = match transcription {
             Ok(t) => t,
