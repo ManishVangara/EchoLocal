@@ -96,3 +96,12 @@ export function Keycap({ label, large }: { label: string; large?: boolean }) {
     </span>
   );
 }
+
+/** "Echo" in white, "Local" in the brand gradient. */
+export function Wordmark({ className }: { className?: string }) {
+  return (
+    <span className={`wordmark ${className ?? ""}`}>
+      Echo<span className="local">Local</span>
+    </span>
+  );
+}

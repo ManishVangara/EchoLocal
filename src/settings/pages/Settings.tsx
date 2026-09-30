@@ -2,7 +2,7 @@
 
 import type { ModelUnload, OverlayPosition, OverlaySize, PostProcessing, Settings } from "../../api";
 import type { AppState } from "../useAppState";
-import { Group, PageHeader, Row, Segmented, Switch } from "../components/Controls";
+import { Group, PageHeader, Row, Segmented, Switch, Wordmark } from "../components/Controls";
 import { AiFields, MicrophoneSelect, ModelPicker, Permissions, ShortcutRecorder } from "../components/Features";
 import { LockIcon } from "../components/Icons";
 import { useEffect, useState } from "react";
@@ -195,7 +195,10 @@ export function AboutPage({ app }: { app: AppState }) {
   return (
     <div className="page about">
       <img className="about-icon" src="/app-icon.png" alt="" width={72} height={72} />
-      <h1 className="wordmark">EchoLocal</h1>
+      <h1>
+        <Wordmark />
+      </h1>
+      <p className="tagline">Speak it. Typed. Locally.</p>
       <p className="hint">Version {app.snapshot.version}</p>
       <p>
         Local push-to-talk dictation with NVIDIA Parakeet. Speech recognition runs on this Mac; no account, no cloud

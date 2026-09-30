@@ -1,27 +1,46 @@
-# EchoLocal brand assets
+# EchoLocal brand
 
-- `logo-original.webp` — the logo as provided.
-- `logo.png` — cleaned: the dark cut-out fringe removed, trimmed and squared.
-- `icon-1024.png` — the app icon: the logo on a midnight rounded tile.
+- `logo-original.webp`: the logo as provided (a glowing "E" on a navy tile).
+- `icon-1024.png`: the macOS app icon, cropped from the logo into the
+  standard rounded tile with a blue-to-ember rim.
+- `inspiration.webp`: the design reference (glass surfaces, status orbs).
+
+Tagline: **Speak it. Typed. Locally.**
+
+## Design language
+
+Dark glass over a night-blue field, lit by the logo's two lights: electric
+blue from the top left and ember orange from the bottom right. Surfaces are
+translucent and blurred with a hairline rim that runs blue into ember. The
+wordmark is "Echo" in white and "Local" in the signature gradient. Dictation
+status is a glass orb: a microphone while listening (with a ring that swells
+with the voice), moving bars while transcribing, a check when inserted and an
+ember orb for errors.
 
 ## Palette (sampled from the logo)
 
 | Name | Hex | Used for |
 | --- | --- | --- |
-| Pearl | `#E5DCD8` | Warm highlight, light backgrounds |
-| Periwinkle | `#6B7BE5` | Accent in dark mode, gradients |
-| Royal blue | `#3952BD` | Accent in light mode |
-| Violet | `#8B6FE0` | Gradient end, recording |
-| Indigo | `#323F7C` | Secondary text on light |
-| Midnight | `#131E4E` | Icon tile, dark surfaces |
-| Slate | `#707494` | Muted text |
+| Night | `#050818` | Window background |
+| Navy | `#0B1238` | Deep surfaces, menus |
+| Electric blue | `#3B7BFF` | Primary gradient, orb |
+| Blue light | `#7AA4FF` | Accent text, focus, selection |
+| Violet | `#7A5CFF` | Gradient middle |
+| Ember | `#FF8A3D` | Live indicators, warm glow |
+| Amber | `#FFC27A` | Labels on dark, warnings |
+| Coral | `#FF5A3C` | Errors, ember gradient end |
 
-## Regenerating
+Gradients: **brand** `#3B7BFF → #6A5CFF → #9A5CFF` (buttons, active items),
+**signature** `#7AA4FF → #9A8CFF → #FFA062` (wordmark, progress, waveform).
+
+## Regenerating the icons
 
 From the repository root, with Playwright available (`npm i -g playwright`):
 
 ```bash
-node scripts/brand/clean-logo.mjs      # logo-original.webp → logo.png
-node scripts/brand/render-icons.mjs    # logo.png → icon-1024.png, app-icon, menu-bar icons
+node scripts/brand/render-icons.mjs    # icon-1024.png, public/app-icon.png, menu-bar icons
 bun tauri icon assets/brand/icon-1024.png -o /tmp/icons   # then copy the macOS files into src-tauri/icons
 ```
+
+The menu-bar icon is a vector "E" drawn in the script (a template image, so
+macOS tints it for light and dark menu bars).

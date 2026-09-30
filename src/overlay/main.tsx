@@ -32,6 +32,14 @@ export function tail(text: string, max: number): string {
   return "…" + (space >= 0 && space < 30 ? cut.slice(space + 1) : cut);
 }
 
+// The logo's two lights: electric blue into ember orange.
+const BLUE = [122, 164, 255];
+const EMBER = [255, 160, 98];
+function blend(t: number): string {
+  const c = BLUE.map((b, i) => Math.round(b + (EMBER[i] - b) * t));
+  return `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+}
+
 /** A bar per recent level sample, newest in the middle, fading outwards. */
 function Waveform({ levels, active }: { levels: number[]; active: boolean }) {
   const n = levels.length;
@@ -44,25 +52,70 @@ function Waveform({ levels, active }: { levels: number[]; active: boolean }) {
         const level = levels[n - 1 - Math.round(distance)] ?? 0;
         const falloff = 1 - (distance / (mid + 1)) * 0.45;
         const height = active ? Math.max(0.12, level * falloff) : 0.12;
-        return <span key={i} style={{ transform: `scaleY(${height})` }} />;
+        const color = blend(n > 1 ? i / (n - 1) : 0);
+        return (
+          <span
+            key={i}
+            style={{ transform: `scaleY(${height})`, background: active ? color : undefined, color }}
+          />
+        );
       })}
     </div>
   );
 }
 
-function StatusIcon({ kind }: { kind: Kind }) {
+/** The status orb: a glass sphere lit blue and ember, with the state inside. */
+function Orb({ kind, level }: { kind: Kind; level: number }) {
+  const listening = kind === "listening";
+  const scale = listening ? 1 + Math.min(level, 1) * 0.08 : 1;
+  return (
+    <span className={`orb ${kind}`} aria-hidden="true">
+      {listening && <span className="orb-ring" style={{ transform: `scale(${1 + Math.min(level, 1) * 0.22})` }} />}
+      <span className="orb-body" style={{ transform: `scale(${scale})` }}>
+        <OrbGlyph kind={kind} />
+      </span>
+    </span>
+  );
+}
+
+function OrbGlyph({ kind }: { kind: Kind }) {
+  const common = { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
   switch (kind) {
+    case "listening":
+      return (
+        <svg {...common}>
+          <rect x="9" y="3.5" width="6" height="11" rx="3" />
+          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" />
+        </svg>
+      );
     case "transcribing":
     case "polishing":
-      return <span className="spinner" aria-hidden="true" />;
+      return (
+        <span className="orb-bars">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+      );
     case "inserted":
-      return <span className="icon ok">✓</span>;
+      return (
+        <svg {...common} strokeWidth={2.6}>
+          <path d="M6 12.5l4 4 8-9" />
+        </svg>
+      );
     case "error":
-      return <span className="icon warn">!</span>;
-    case "notice":
-      return <span className="icon info">i</span>;
+      return (
+        <svg {...common} strokeWidth={2.6}>
+          <path d="M12 7v6M12 17h.01" />
+        </svg>
+      );
     default:
-      return <span className="rec-dot" aria-hidden="true" />;
+      return (
+        <svg {...common} strokeWidth={2.6}>
+          <path d="M12 11v6M12 7h.01" />
+        </svg>
+      );
   }
 }
 
@@ -104,6 +157,7 @@ function Overlay() {
   }, []);
 
   const recording = status.kind === "listening";
+  const level = levels[levels.length - 1] ?? 0;
   const busy = recording || status.kind === "transcribing" || status.kind === "polishing";
   const setMode = (mode: Mode) => {
     setContext((c) => ({ ...c, mode }));
@@ -113,9 +167,9 @@ function Overlay() {
   if (context.size === "pill") {
     return (
       <div className="frame">
-        <div className={`pill ${status.kind}`} role="status" aria-live="polite">
-          {recording ? <Waveform levels={levels} active /> : <StatusIcon kind={status.kind} />}
-          <span className="message">{status.message}</span>
+        <div className={`glass pill ${status.kind}`} role="status" aria-live="polite">
+          <Orb kind={status.kind} level={level} />
+          {recording ? <Waveform levels={levels} active /> : <span className="message">{status.message}</span>}
         </div>
       </div>
     );
@@ -124,7 +178,7 @@ function Overlay() {
   const shown = tail(text, MAX_CHARS[context.size]);
   return (
     <div className="frame">
-      <div className={`card ${context.size} ${status.kind}`} role="status" aria-live="polite">
+      <div className={`glass card ${context.size} ${status.kind}`} role="status" aria-live="polite">
         <div className="card-top">
           <div className="target">
             {context.app_icon ? (
@@ -171,11 +225,11 @@ function Overlay() {
         </div>
 
         <div className="card-bottom">
-          <Waveform levels={levels} active={recording} />
           <div className="status">
-            {!recording && <StatusIcon kind={status.kind} />}
+            <Orb kind={status.kind} level={level} />
             <span className="message">{status.message}</span>
           </div>
+          <Waveform levels={levels} active={recording} />
         </div>
       </div>
     </div>
